@@ -1,40 +1,10 @@
 """ Entry point of the application."""
-import logging
-
-from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-from models.base import Base
+from utils.logger import logger
 
 
-# set up logging
-
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-)
-
-logger = logging.getLogger(__name__)
 logger.info("Starting ClassBot...")
-
-# set up database
-engine = create_engine("sqlite:///classbot.db", echo=True)
-logger.info("Created database engine.")
-
-Base.metadata.create_all(engine)
-logger.info("Created database tables.")
-
-# Create a session factory
-Session = sessionmaker(bind=engine)
-
-def get_session():
-    # Create a new session
-    session = Session()
-
-    try:
-        yield session
-    finally:
-        session.close()
 
 
 # ptb imports
@@ -52,6 +22,7 @@ from telegram.ext import (
 
 # db_ops imports
 from sql import user_sql
+
 
 # bot commands
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
