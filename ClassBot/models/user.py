@@ -1,12 +1,14 @@
+import datetime
 from typing import TYPE_CHECKING, Optional
-from sqlalchemy import DATE
+from sqlalchemy import DateTime
+from sqlalchemy.sql import func
 from sqlalchemy.orm import mapped_column, Mapped, relationship
 
-from ClassBot.models.base import Base
+from models.base import Base
 
 if TYPE_CHECKING:
-    from ClassBot.models.student import Student # avoid circular import
-    from ClassBot.models.teacher import Teacher
+    from models.student import Student # avoid circular import
+    from models.teacher import Teacher
 
 class User(Base):
     __tablename__ = 'user'
@@ -14,7 +16,9 @@ class User(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     fullname: Mapped[str]
     telegram_chatid: Mapped[str]
-    creation_date: Mapped[DATE] = mapped_column(default=DATE.today())
+    creation_date: Mapped[datetime.date] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
 
     student: Mapped[Optional["Student"]] = relationship(back_populates="user", cascade="all, delete-orphan")
     teacher: Mapped[Optional["Teacher"]] = relationship(back_populates="user", cascade="all, delete-orphan")

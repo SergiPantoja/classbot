@@ -2,12 +2,12 @@ from typing import TYPE_CHECKING, Optional, List
 from sqlalchemy import ForeignKey
 from sqlalchemy.orm import mapped_column, Mapped, relationship
 
-from ClassBot.models.base import Base
+from models.base import Base
 
 if TYPE_CHECKING:
-    from ClassBot.models.user import User # avoid circular import
-    from ClassBot.models.course import Course
-    from ClassBot.models.teacher_classroom import teacher_classroom
+    from models.user import User # avoid circular import
+    from models.course import Course
+    from models.teacher_classroom import Teacher_classroom
 
 
 # specialization of User table
@@ -22,7 +22,7 @@ class Teacher(Base):
     # One-to-one relationship with course
     course: Mapped[Optional["Course"]] = relationship(back_populates='teacher')
     # Many-to-many relationship with classroom
-    classrooms: Mapped[Optional[List["teacher_classroom"]]] = relationship(back_populates="teacher", cascade='all, delete-orphan')
+    classrooms: Mapped[Optional[List["Teacher_classroom"]]] = relationship(back_populates="teacher", cascade='all, delete-orphan')
 
     def __repr__(self) -> str:
         return f'Teacher(id={self.id})'
