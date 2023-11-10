@@ -1,6 +1,10 @@
 """ Entry point of the application."""
-
 import logging
+
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+
+from models.base import Base
 
 
 # set up logging
@@ -13,16 +17,24 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 logger.info("Starting ClassBot...")
 
-
-from sqlalchemy import create_engine
-
+# set up database
 engine = create_engine("sqlite:///classbot.db", echo=True)
 logger.info("Created database engine.")
 
-from models.base import Base
-
 Base.metadata.create_all(engine)
 logger.info("Created database tables.")
+
+# Create a session factory
+Session = sessionmaker(bind=engine)
+
+def get_session():
+    # Create a new session
+    session = Session()
+
+    try:
+        yield session
+    finally:
+        session.close()
 
 
 # ptb imports
@@ -37,11 +49,16 @@ from telegram.ext import (
     filters,
 )
 
-# models imports
-import models
+
+# db_ops imports
+from sql import user_sql
 
 # bot commands
-
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    # Check if user with this chatid exists
+    user = user_sql.get_user_by_chatid(update.effective_chat.id)
+    pass
+    
 
 
 

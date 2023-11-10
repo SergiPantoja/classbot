@@ -15,7 +15,7 @@ class User(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     fullname: Mapped[str]
-    telegram_chatid: Mapped[str]
+    telegram_chatid: Mapped[int]
     creation_date: Mapped[datetime.date] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )
