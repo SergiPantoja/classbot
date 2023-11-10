@@ -17,7 +17,7 @@ class Student_classroom(Base):
     classroom_id: Mapped[int] = mapped_column(ForeignKey('classroom.id'), primary_key=True)
 
     student: Mapped["Student"] = relationship(back_populates="classrooms")
-    classroom: Mapped["Classroom"] = relationship(back_populates="teachers")
+    classroom: Mapped["Classroom"] = relationship(back_populates="students")
 
     def __repr__(self) -> str:
         return f'student_classroom(teacher_id={self.student_id}, classroom_id={self.classroom_id})'

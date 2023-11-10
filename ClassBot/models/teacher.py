@@ -20,7 +20,7 @@ class Teacher(Base):
     # One-to-one specialization of user
     user: Mapped["User"] = relationship(back_populates='teacher')
     # One-to-many relationship with course
-    courses: Mapped[Optional[List["Course"]]] = relationship(back_populates='teacher')
+    courses: Mapped[Optional[List["Course"]]] = relationship(back_populates="teacher")
     # Many-to-many relationship with classroom
     classrooms: Mapped[Optional[List["Teacher_classroom"]]] = relationship(back_populates="teacher", cascade='all, delete-orphan')
 

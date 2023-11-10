@@ -16,7 +16,7 @@ class Course(Base):
     name: Mapped[str]
 
     # Many-to-one relationship with teacher
-    teacher: Mapped["Teacher"] = relationship(back_populates='course')
+    teacher: Mapped["Teacher"] = relationship(back_populates='courses')
     # One-to-many relationship with classroom
     classrooms: Mapped[Optional[List["Classroom"]]] = relationship(back_populates='course', cascade='all, delete-orphan')
 
