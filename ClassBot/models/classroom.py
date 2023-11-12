@@ -21,9 +21,9 @@ class Classroom(Base):
     # Many-to-one relationship with course
     course: Mapped["Course"] = relationship(back_populates='classrooms')
     # Many-to-many relationship with teacher
-    teachers: Mapped[Optional[List["Teacher_classroom"]]] = relationship(back_populates="classroom", cascade='all, delete-orphan')
+    teachers: Mapped[Optional[List["Teacher_classroom"]]] = relationship(back_populates="classroom")
     # Many-to-many relationship with student
-    students: Mapped[Optional[List["Student_classroom"]]] = relationship(back_populates="classroom", cascade='all, delete-orphan')
+    students: Mapped[Optional[List["Student_classroom"]]] = relationship(back_populates="classroom")
     
     def __repr__(self) -> str:
         return f'Classroom(id={self.id}, course_id={self.course_id}, name={self.name}, teacher_auth={self.teacher_auth}, student_auth={self.student_auth})'
