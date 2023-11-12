@@ -1,9 +1,10 @@
-from telegram import Update, ReplyKeyboardMarkup, ReplyKeyboardRemove
+from telegram import Update, ReplyKeyboardMarkup, ReplyKeyboardRemove, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import (
     CommandHandler,
     ContextTypes,
     ConversationHandler,
     MessageHandler,
+    CallbackQueryHandler,
     filters,
 )
 
@@ -13,6 +14,7 @@ from sql import (
     teacher_classroom_sql
 )
 from bot.utils import states, keyboards
+from bot.inline_keyboard_pagination import paginator, paginated_keyboard, paginator_handler
 
 
 # Start command, initiates user login conversation
@@ -241,11 +243,13 @@ async def teacher_creation(update: Update, context: ContextTypes.DEFAULT_TYPE):
         # get courses for this teacher
         courses = course_sql.get_courses_by_teacher(teacher_id)
         if courses:
-            # show courses and ask for course to create classroom in
-            keyboard = [[f"{course.id} {course.name}"] for course in courses]
+            # show courses and ask for course to create classroom in. Use
+            # inline keyboard and callback data to save course_id to context
+            buttons = [InlineKeyboardButton(f"{i}. {course.name}", callback_data=f"COURSE#{course.id}") for i, course in enumerate(courses, start=1)]
+            
             await update.message.reply_text(
                 "Seleccione el curso en el que desea crear el aula:",
-                reply_markup=ReplyKeyboardMarkup(keyboard, one_time_keyboard=True, resize_keyboard=True),
+                reply_markup=paginated_keyboard(buttons, context=context),
             )
             return states.SELECT_COURSE
         else:
@@ -282,31 +286,45 @@ async def select_course(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """ Receives the course id space separated from the course name entered as 
     a button. Checks if the course exists and saves the course_id to context.
     Then asks for classroom name, teacher auth and student auth."""
+    query = update.callback_query
+    await query.answer()
+
     try:
-        # get course id from input
-        course_id = int(update.message.text.split()[0])
+        # get course id from callback data
+        course_id = int(query.data.split("#")[1])
         # check if course exists
         course = course_sql.get_course(course_id)
     except:
         # unexpected input
-        await update.message.reply_text(
+        await query.message.reply_text(
             "No entiendo. Por favor seleccione una opcion:",
             reply_markup=ReplyKeyboardMarkup(keyboards.TEACHER_CREATE, one_time_keyboard=True, resize_keyboard=True),
         )
         return states.TEACHER_CREATE
     if course:
+        # check if course belongs to teacher (should always be true but if a user
+        # knows the id of a course that does not belong to him, he could create
+        # a classroom in it)
+        teacher_id = user_sql.get_user_by_chatid(update.effective_chat.id).id
+        if course.teacher_id != teacher_id:
+            # course does not belong to teacher
+            await query.message.reply_text(
+                "No posee autorización para crear un aula de este curso. Por favor seleccione un curso existente o cree uno:",
+                reply_markup=ReplyKeyboardMarkup(keyboards.TEACHER_CREATE, one_time_keyboard=True, resize_keyboard=True),
+            )
+            return states.TEACHER_CREATE
         # save course_id to context
         context.user_data["course_id"] = course_id
         # ask for classroom name, teacher auth and student auth (in that order)
         # separated by spaces
-        await update.message.reply_text(
+        await query.message.reply_text(
             "Ingrese el nombre del aula, la contraseña de profesor y la contraseña de estudiante separados por espacios en ese orden.",
             reply_markup=ReplyKeyboardMarkup(keyboards.CANCEL, one_time_keyboard=True, resize_keyboard=True),
         )
         return states.NEW_CLASSROOM
     else:
         # course does not exist
-        await update.message.reply_text(
+        await query.message.reply_text(
             "El curso enviado no existe. Por favor seleccione un curso existente o cree uno:",
             reply_markup=ReplyKeyboardMarkup(keyboards.TEACHER_CREATE, one_time_keyboard=True, resize_keyboard=True),
         )
@@ -393,7 +411,10 @@ user_login_conv = ConversationHandler(
         states.TEACHER_LOGIN: [ MessageHandler(filters.TEXT & ~filters.COMMAND, teacher_login)],
         states.TEACHER_CREATE: [ MessageHandler(filters.TEXT & ~filters.COMMAND, teacher_creation)],
         states.NEW_COURSE: [ MessageHandler(filters.TEXT & ~filters.COMMAND, new_course)],
-        states.SELECT_COURSE: [ MessageHandler(filters.TEXT & ~filters.COMMAND, select_course)],
+        states.SELECT_COURSE: [ 
+            CallbackQueryHandler(select_course, pattern="^COURSE#"),
+            paginator_handler,
+            ],
         states.NEW_CLASSROOM: [ MessageHandler(filters.TEXT & ~filters.COMMAND, new_classroom)],
         states.STUDENT_LOGIN: [ MessageHandler(filters.TEXT & ~filters.COMMAND, student_login)],
         states.TEACHER_ENTER: [ MessageHandler(filters.TEXT & ~filters.COMMAND, teacher_enter)],
