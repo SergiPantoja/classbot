@@ -1,4 +1,3 @@
-from telegram import Update, ReplyKeyboardMarkup, ReplyKeyboardRemove
 from telegram.ext import Application
 
 from utils.logger import logger
