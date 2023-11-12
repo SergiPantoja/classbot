@@ -15,6 +15,7 @@ class Student(Base):
 
     # user_id is a foreign key to the user table, and primary key for this table
     id: Mapped[int] = mapped_column(ForeignKey('user.id'), primary_key=True)
+    active_classroom_id: Mapped[Optional[int]] = mapped_column(ForeignKey('classroom.id'))
 
     # One-to-one specialization of user
     user: Mapped["User"] = relationship(back_populates='student')

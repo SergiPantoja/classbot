@@ -15,8 +15,8 @@ class Classroom(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     course_id: Mapped[int] = mapped_column(ForeignKey('course.id'))
     name: Mapped[str]
-    teacher_auth: Mapped[Optional[str]]
-    student_auth: Mapped[Optional[str]]
+    teacher_auth: Mapped[str] = mapped_column(unique=True)  
+    student_auth: Mapped[str] = mapped_column(unique=True)
 
     # Many-to-one relationship with course
     course: Mapped["Course"] = relationship(back_populates='classrooms')
