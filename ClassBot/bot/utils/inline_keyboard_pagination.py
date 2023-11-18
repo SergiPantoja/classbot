@@ -6,7 +6,7 @@ from telegram.ext import CallbackQueryHandler, ContextTypes
 
 ITEMS_PER_PAGE = 5
 
-def paginated_keyboard(buttons: list[InlineKeyboardButton], page: int = 1, context: ContextTypes = None) -> InlineKeyboardMarkup:
+def paginated_keyboard(buttons: list[InlineKeyboardButton], page: int = 1, context: ContextTypes = None, add_back = False) -> InlineKeyboardMarkup:
     """ Returns a paginated keyboard. """
     
     # save buttons in user_data
@@ -27,6 +27,10 @@ def paginated_keyboard(buttons: list[InlineKeyboardButton], page: int = 1, conte
             keyboard.append([InlineKeyboardButton("<<", callback_data=f"page#{page - 1}")])
     elif end_index < len(buttons):    # if not in the last page
         keyboard.append([InlineKeyboardButton(">>", callback_data=f"page#{page + 1}")])
+
+    # Add back button
+    if add_back:
+        keyboard.append([InlineKeyboardButton("Atrás", callback_data="back")])
 
     return InlineKeyboardMarkup(keyboard)
 

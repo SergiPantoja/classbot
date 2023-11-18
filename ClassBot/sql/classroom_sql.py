@@ -21,6 +21,11 @@ def get_classroom_by_student_auth(student_auth: str) -> Classroom | None:   # si
     with session() as s:
         return s.query(Classroom).filter(Classroom.student_auth == student_auth).first()
 
+def get_classrooms_by_course(course_id: int) -> list[Classroom]:
+    """ Returns a list of classrooms belonging to the given course. """
+    with session() as s:
+        return s.query(Classroom).filter(Classroom.course_id == course_id).all()
+
 def add_classroom(course_id: int, name: str, teacher_auth: str, student_auth: str) -> None:
     """ Adds a new classroom to the database. """
     with session() as s:

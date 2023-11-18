@@ -14,7 +14,7 @@ from sql import (
     teacher_classroom_sql
 )
 from bot.utils import states, keyboards
-from bot.inline_keyboard_pagination import paginator, paginated_keyboard, paginator_handler
+from bot.utils.inline_keyboard_pagination import paginator, paginated_keyboard, paginator_handler
 
 
 # Start command, initiates user login conversation
@@ -136,6 +136,10 @@ async def student_login(update: Update, context: ContextTypes.DEFAULT_TYPE):
         # set active classroom of student to this classroom
         student_sql.set_student_active_classroom(student_id, classroom.id)
         logger.info("Student %s logged in to classroom %s.\n\n", update.message.from_user.first_name, classroom.name)
+
+        # add user role to context
+        context.user_data["role"] = "student"
+
         # show student main menu and classroom info
         await update.message.reply_text(
             f"Bienvenido {user_sql.get_user_by_chatid(update.effective_chat.id).fullname}!\n\n"
@@ -144,8 +148,6 @@ async def student_login(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"menu en construccion...",
             reply_markup=ReplyKeyboardMarkup(keyboards.STUDENT_MAIN_MENU, one_time_keyboard=True, resize_keyboard=True),
         )
-        # clear user data
-        context.user_data.clear()
 
         return ConversationHandler.END
     else:
@@ -203,6 +205,10 @@ async def teacher_enter(update: Update, context: ContextTypes.DEFAULT_TYPE):
         # set active classroom of teacher to this classroom
         teacher_sql.set_teacher_active_classroom(teacher_id, classroom.id)
         logger.info("Teacher %s logged in to classroom %s.\n\n", update.message.from_user.first_name, classroom.name)
+
+        # add user role to context
+        context.user_data["role"] = "teacher"
+
         # show teacher main menu and classroom info
         await update.message.reply_text(
             f"Bienvenido profe {user_sql.get_user_by_chatid(update.effective_chat.id).fullname}!\n\n"
@@ -211,8 +217,6 @@ async def teacher_enter(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"menu en construccion...",
             reply_markup=ReplyKeyboardMarkup(keyboards.TEACHER_MAIN_MENU, one_time_keyboard=True, resize_keyboard=True),
         )
-        # clear user data
-        context.user_data.clear()
 
         return ConversationHandler.END
     else:
@@ -358,6 +362,10 @@ async def new_classroom(update: Update, context: ContextTypes.DEFAULT_TYPE):
         # set active classroom of teacher to this classroom
         teacher_sql.set_teacher_active_classroom(teacher_id, classroom_id)
         logger.info("Teacher %s logged in to classroom %s.\n\n", update.message.from_user.first_name, classroom_name)
+
+        # add user role to context
+        context.user_data["role"] = "teacher"
+
         # show teacher main menu and classroom info
         await update.message.reply_text(
             f"Bienvenido profe {user_sql.get_user_by_chatid(update.effective_chat.id).fullname}!\n\n"
@@ -366,16 +374,23 @@ async def new_classroom(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"menu en construccion...",
             reply_markup=ReplyKeyboardMarkup(keyboards.TEACHER_MAIN_MENU, one_time_keyboard=True, resize_keyboard=True),
         )
-        # clear user data
-        context.user_data.clear()
 
         return ConversationHandler.END
-    except:
-        # unexpected input
-        await update.message.reply_text(
-            "No entiendo. Por favor ingrese el nombre del aula, la contraseña de profesor y la contraseña de estudiante separados por espacios en ese orden:",
-            reply_markup=ReplyKeyboardMarkup(keyboards.CANCEL, one_time_keyboard=True, resize_keyboard=True),
-        )
+    except Exception as e:
+        # if error is because the auth is already in use, since it is unique in
+        # the db, notify the user
+
+        if "UNIQUE constraint failed" in str(e):
+            await update.message.reply_text(
+                "La contraseña de profesor o estudiante ya esta en uso. Por favor ingrese una contraseña diferente:",
+                reply_markup=ReplyKeyboardMarkup(keyboards.CANCEL, one_time_keyboard=True, resize_keyboard=True),
+            )
+        else:
+            # unexpected input
+            await update.message.reply_text(
+                "No entiendo. Por favor ingrese el nombre del aula, la contraseña de profesor y la contraseña de estudiante separados por espacios en ese orden:",
+                reply_markup=ReplyKeyboardMarkup(keyboards.CANCEL, one_time_keyboard=True, resize_keyboard=True),
+            )
         return states.NEW_CLASSROOM
 
 
