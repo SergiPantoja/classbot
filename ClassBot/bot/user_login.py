@@ -382,7 +382,7 @@ async def new_classroom(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         if "UNIQUE constraint failed" in str(e):
             await update.message.reply_text(
-                "La contraseña de profesor o estudiante ya esta en uso. Por favor ingrese una contraseña diferente:",
+                "*La contraseña de profesor o estudiante ya esta en uso. Por favor ingrese una contraseña diferente:",
                 reply_markup=ReplyKeyboardMarkup(keyboards.CANCEL, one_time_keyboard=True, resize_keyboard=True),
             )
         else:
