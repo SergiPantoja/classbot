@@ -331,6 +331,10 @@ async def edit_course_back(update: Update, context: ContextTypes):
 # Edit classroom conversation
 
 
+
+
+
+
 # Handlers
 edit_course_conv = ConversationHandler(
     entry_points=[MessageHandler(filters.Regex("^Editar curso$"), edit_course)],
