@@ -10,7 +10,7 @@ from telegram.ext import (
 
 from utils.logger import logger
 from bot.utils import states, keyboards
-from bot.utils.inline_keyboard_pagination import paginated_keyboard, paginator, paginator_handler
+from bot.utils.inline_keyboard_pagination import paginated_keyboard, paginator_handler
 from sql import user_sql, teacher_sql, classroom_sql, course_sql, student_sql, student_classroom_sql, teacher_classroom_sql
 
 
@@ -329,8 +329,99 @@ async def edit_course_back(update: Update, context: ContextTypes):
 
 
 # Edit classroom conversation
+async def edit_classroom(update: Update, context: ContextTypes):
+    """Entry point of the edit classroom conversation.
+    Gives options for changing name, passwords, removing students, and if user
+    is onwer of the course this classroom belongs to, deleting the classroom
+    and removing teachers."""
+
+    # create context.user_data["edit_classroom"]
+    context.user_data["edit_classroom"] = {}
+
+    # get active classroom from db
+    teacher = teacher_sql.get_teacher(user_sql.get_user_by_chatid(update.message.chat_id).id)
+    classroom = classroom_sql.get_classroom(teacher.active_classroom_id)
+
+    # check if teacher is owner of the course to choose which keyboard to show
+    course = course_sql.get_course(classroom.course_id)
+    keyboard = keyboards.TEACHER_EDIT_CLASSROOM_OWNER if teacher.id == course.teacher_id else keyboards.TEACHER_EDIT_CLASSROOM
+
+    await update.message.reply_text(
+        f"Aula: {classroom.name}\n"
+        "Elige una opción:",
+        reply_markup=InlineKeyboardMarkup(keyboard),
+    )
+    return states.EDIT_CLASSROOM_CHOOSE_OPTION
+
+async def edit_classroom_choose_option(update: Update, context: ContextTypes):
+    """Handles the option selected by the user"""
+    query = update.callback_query
+    query.answer()
+    option = query.data
+
+    teacher_id = user_sql.get_user_by_chatid(update.callback_query.message.chat_id).id
+    
+    if option == "option_edit_classroom_name":
+        # asks to input new name
+        await query.message.reply_text(
+            "Ingresa el nuevo nombre del aula:",
+            reply_markup=ReplyKeyboardRemove(),
+        )
+        return states.EDIT_CLASSROOM_NAME
+    
+    elif option == "option_edit_classroom_back":
+        # back to settings menu
+        await query.message.reply_text(
+            "Elija una opción:",
+            reply_markup=ReplyKeyboardMarkup(keyboards.TEACHER_SETTINGS, one_time_keyboard=True, resize_keyboard=True),
+        )
+
+        # clear context.user_data["edit_classroom"] if exists
+        if "edit_classroom" in context.user_data:
+            context.user_data.pop("edit_classroom")
+        
+        return ConversationHandler.END
+    
+
+async def edit_classroom_name(update: Update, context: ContextTypes):
+    # get name
+    name = update.message.text
+    # get classroom id
+    teacher = teacher_sql.get_teacher(user_sql.get_user_by_chatid(update.message.chat_id).id)
+    classroom_id = teacher.active_classroom_id
+    # update classroom name
+    classroom_sql.update_classroom_name(classroom_id, name)
+    # get classroom
+    classroom = classroom_sql.get_classroom(classroom_id)
+
+    course = course_sql.get_course(classroom.course_id)
+    keyboard = keyboards.TEACHER_EDIT_CLASSROOM_OWNER if teacher.id == course.teacher_id else keyboards.TEACHER_EDIT_CLASSROOM
+    # notif
+    await update.message.reply_text(
+        f"Nombre cambiado a {classroom.name}\n\n"
+        "Elija una opcion:",
+        reply_markup=InlineKeyboardMarkup(keyboard)
+    )
+    return states.EDIT_COURSE_CHOOSE_OPTION
 
 
+
+
+async def edit_classroom_back(update: Update, context: ContextTypes):
+    """Returns to settings menu"""
+    query = update.callback_query
+    query.answer()
+
+    await query.message.reply_text(
+        "Elija una opción:",
+        reply_markup=ReplyKeyboardMarkup(keyboards.TEACHER_SETTINGS, one_time_keyboard=True, resize_keyboard=True),
+    )
+
+    # clear context.user_data["edit_classroom"] if exists
+    if "edit_classroom" in context.user_data:
+        context.user_data.pop("edit_classroom")
+
+    return ConversationHandler.END
 
 
 
@@ -357,4 +448,14 @@ edit_course_conv = ConversationHandler(
         ],
 )
 
-
+edit_classroom_conv = ConversationHandler(
+    entry_points=[MessageHandler(filters.Regex("^Editar aula$"), edit_classroom)],
+    states={
+        states.EDIT_CLASSROOM_CHOOSE_OPTION: [CallbackQueryHandler(edit_classroom_choose_option, pattern=r"^option_")],
+        states.EDIT_CLASSROOM_NAME: [MessageHandler(filters.TEXT & ~filters.COMMAND, edit_classroom_name)],
+    },
+    fallbacks=[
+        MessageHandler(filters.Regex("^Atrás$"), back_to_teacher_menu),
+        CallbackQueryHandler(edit_classroom_back, pattern=r"^(option_edit_classroom_back|back)$"),
+    ]
+)

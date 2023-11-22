@@ -10,7 +10,7 @@ from utils.logger import logger
 from bot.utils.commands import get_chat_id_handler
 from bot.context_handlers import settings_handler, back_to_menu_handler, log_out_handler
 from bot.user_login import user_login_conv
-from bot.teacher_settings import edit_course_conv
+from bot.teacher_settings import edit_course_conv, edit_classroom_conv
 
 # configs (move to file later)
 TOKEN = "5827425180:AAE6HGte6-L50z8IWysZ1jVng02zc1qxDaw"    #TEMPORARY TOKEN
@@ -60,6 +60,7 @@ def _add_handlers(app):
     app.add_handler(user_login_conv) 
 
     app.add_handler(edit_course_conv)   # needs to be first to avoid conflict with other handlers
+    app.add_handler(edit_classroom_conv)
     app.add_handler(settings_handler)
     app.add_handler(back_to_menu_handler)
     app.add_handler(log_out_handler)

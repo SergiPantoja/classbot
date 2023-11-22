@@ -31,3 +31,9 @@ def add_classroom(course_id: int, name: str, teacher_auth: str, student_auth: st
     with session() as s:
         s.add(Classroom(course_id=course_id, name=name, teacher_auth=teacher_auth, student_auth=student_auth))
         s.commit()
+
+def update_classroom_name(classroom_id: int, new_name: str):
+    """ Updates the classroom name """
+    with session() as s:
+        s.query(Classroom).filter(Classroom.id == classroom_id).update({"name": new_name})
+        s.commit()
