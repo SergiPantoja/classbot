@@ -1,3 +1,5 @@
+from sqlalchemy import select
+
 from models.classroom import Classroom
 from sql import session
 
@@ -46,4 +48,13 @@ def update_classroom_password(classroom_id: int, password: str, password_type: s
         raise ValueError("Invalid password_type")
     with session() as s:
         s.query(Classroom).filter(Classroom.id == classroom_id).update({password_type: password})
+        s.commit()
+
+def delete_classroom(classroom_id: int) -> None:
+    """ Deletes the classroom from the database. """
+    with session() as s:
+        # get classroom
+        classroom = s.execute(select(Classroom).where(Classroom.id == classroom_id)).scalar_one()
+        # delete classroom
+        s.delete(classroom)
         s.commit()

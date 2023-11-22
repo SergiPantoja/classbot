@@ -1,5 +1,6 @@
 from models.student import Student
 from models.classroom import Classroom
+from models.student_classroom import Student_classroom
 from sql import session
 
 
@@ -20,6 +21,11 @@ def set_student_active_classroom(student_id: int, classroom_id: int) -> None:
         student = s.query(Student).filter(Student.id == student_id).first()
         student.active_classroom_id = classroom_id
         s.commit()
+
+def get_students_by_classroom(classroom_id: int) -> list[Student]:
+    """ Returns a list of students for the given classroom. """
+    with session() as s:
+        return s.query(Student).join(Student_classroom).filter(Student_classroom.classroom_id == classroom_id).all()
 
 
 def add_student(user_id: int) -> None:
