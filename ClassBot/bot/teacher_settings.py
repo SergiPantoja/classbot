@@ -241,8 +241,12 @@ async def delete_course_confirm(update: Update, context: ContextTypes):
     if query.data == "delete_course_confirm":
         # get course id
         course_id = context.user_data["edit_course"]["course_id"]
+
         # delete course
         course_sql.delete_course(course_id)
+        # check if the classrooms of the course got deleted in cascade
+        if classroom_sql.get_classrooms_by_course(course_id):
+            logger.warning(f"Classrooms of course {course_id} were not deleted\n\n\n\n")
 
         if active_course:
             # clear context.user_data and log out user
@@ -259,9 +263,6 @@ async def delete_course_confirm(update: Update, context: ContextTypes):
             "Curso eliminado",
             reply_markup=ReplyKeyboardMarkup(keyboards.TEACHER_SETTINGS, one_time_keyboard=True, resize_keyboard=True),
         )
-        # log if there is any classroom still asociated with the course
-        if classroom_sql.get_classrooms_by_course(course_id):
-            logger.warning(f"Classrooms still asociated with course {course_id}")
         
         return ConversationHandler.END
 
@@ -359,7 +360,9 @@ async def edit_classroom_choose_option(update: Update, context: ContextTypes):
     query.answer()
     option = query.data
 
-    teacher_id = user_sql.get_user_by_chatid(update.callback_query.message.chat_id).id
+    teacher = teacher_sql.get_teacher(user_sql.get_user_by_chatid(update.callback_query.message.chat_id).id)
+    course = course_sql.get_course(classroom_sql.get_classroom(teacher.active_classroom_id).course_id)
+    keyboard = keyboards.TEACHER_EDIT_CLASSROOM_OWNER if teacher.id == course.teacher_id else keyboards.TEACHER_EDIT_CLASSROOM
     
     if option == "option_edit_classroom_name":
         # asks to input new name
@@ -393,6 +396,77 @@ async def edit_classroom_choose_option(update: Update, context: ContextTypes):
         )
         return states.EDIT_CLASSROOM_PASSWORD
         
+    elif option == "option_change_classroom":
+        # get classroom ids the teacher is in
+        classrooms = teacher_classroom_sql.get_classroom_ids(teacher.id)
+        # remove active classroom
+        classrooms.remove(teacher.active_classroom_id)
+        if classrooms:
+            # show classrooms to change to
+            buttons = [InlineKeyboardButton(f"{i}. {classroom_sql.get_classroom(classroom_id).name}", callback_data=f"change_classroom#{classroom_id}") for i, classroom_id in enumerate(classrooms, start=1)]
+            await query.edit_message_text(
+                "Elige un aula:",
+                reply_markup=paginated_keyboard(buttons, context=context, add_back=True),
+            )
+            return states.EDIT_CLASSROOM_CHANGE
+        else:
+            # notif
+            await query.edit_message_text(
+                "No tienes más aulas para cambiar\n\n"
+                "Elija una opción:",
+                reply_markup=InlineKeyboardMarkup(keyboard)
+            )
+            return states.EDIT_CLASSROOM_CHOOSE_OPTION
+    
+    elif option == "option_remove_students":
+        # show students in the classroom to remove
+        student_ids = student_classroom_sql.get_student_ids(teacher.active_classroom_id)
+        if student_ids:
+            buttons = [InlineKeyboardButton(f"{i}. {user_sql.get_user(student_id).fullname}", callback_data=f"remove_student#{student_id}") for i, student_id in enumerate(student_ids, start=1)]
+            await query.edit_message_text(
+                "Elige un estudiante:",
+                reply_markup=paginated_keyboard(buttons, context=context, add_back=True),
+            )
+            return states.EDIT_CLASSROOM_REMOVE_STUDENT
+        else:
+            # notif
+            await query.edit_message_text(
+                "No hay estudiantes en el aula\n\n"
+                "Elija una opción:",
+                reply_markup=InlineKeyboardMarkup(keyboard)
+            )
+            return states.EDIT_CLASSROOM_CHOOSE_OPTION
+
+    elif option == "option_remove_teachers":
+        # check if teacher is owner of the course
+        if teacher.id == course.teacher_id:
+            # show teachers in the classroom to remove
+            teacher_ids = teacher_classroom_sql.get_teacher_ids(teacher.active_classroom_id)
+            # remove user from the list
+            teacher_ids.remove(teacher.id)
+            if teacher_ids:
+                buttons = [InlineKeyboardButton(f"{i}. {user_sql.get_user(teacher_id).fullname}", callback_data=f"remove_teacher#{teacher_id}") for i, teacher_id in enumerate(teacher_ids, start=1)]
+                await query.edit_message_text(
+                    "Elige un profesor:",
+                    reply_markup=paginated_keyboard(buttons, context=context, add_back=True),
+                )
+                return states.EDIT_CLASSROOM_REMOVE_TEACHER
+            else:
+                # notif
+                await query.edit_message_text(
+                    "No hay profesores en el aula\n\n"
+                    "Elija una opción:",
+                    reply_markup=InlineKeyboardMarkup(keyboard)
+                )
+                return states.EDIT_CLASSROOM_CHOOSE_OPTION
+        else:
+            # notif
+            await query.edit_message_text(
+                "No puedes eliminar profesores de este curso\n\n"
+                "Elija una opción:",
+                reply_markup=InlineKeyboardMarkup(keyboard)
+            )
+            return states.EDIT_CLASSROOM_CHOOSE_OPTION
 
     elif option == "option_edit_classroom_back":
         # back to settings menu
@@ -452,6 +526,79 @@ async def edit_classroom_password(update: Update, context: ContextTypes):
     )
     return states.EDIT_COURSE_CHOOSE_OPTION
 
+async def edit_classroom_change(update: Update, context: ContextTypes):
+    """ Selects a classroom to change to """
+    query = update.callback_query
+    query.answer()
+
+    classroom_id = int(query.data.split("#")[1])
+    # change active classroom
+    teacher = teacher_sql.get_teacher(user_sql.get_user_by_chatid(update.callback_query.message.chat_id).id)
+    teacher_sql.set_teacher_active_classroom(teacher.id, classroom_id)
+
+    classroom = classroom_sql.get_classroom(classroom_id)
+    course = course_sql.get_course(classroom.course_id)
+    keyboard = keyboards.TEACHER_EDIT_CLASSROOM_OWNER if teacher.id == course.teacher_id else keyboards.TEACHER_EDIT_CLASSROOM
+
+    await query.edit_message_text(
+        f"Aula: {classroom.name}\n"
+        "Elige una opción:",
+        reply_markup=InlineKeyboardMarkup(keyboard),
+    )
+    return states.EDIT_CLASSROOM_CHOOSE_OPTION
+
+async def edit_classroom_remove_student(update: Update, context: ContextTypes):
+    """ Removes the selected student from the classroom.
+    Does not deletes the student from the database, only the association"""
+    query = update.callback_query
+    query.answer()
+
+    teacher = teacher_sql.get_teacher(user_sql.get_user_by_chatid(update.callback_query.message.chat_id).id)
+
+    student_id = int(query.data.split("#")[1])
+    # check if student's active classroom is the current one and if so set it to None
+    student = student_sql.get_student(student_id)
+    if student.active_classroom_id == teacher.active_classroom_id:
+        student_sql.set_student_active_classroom(student_id, None)
+        logger.info(f"Student {student_id} active classroom set to None when removed from classroom {teacher.active_classroom_id}")
+    # remove student from classroom
+    student_classroom_sql.remove_student(student_id, teacher.active_classroom_id)
+    
+    classroom = classroom_sql.get_classroom(teacher.active_classroom_id)
+    course = course_sql.get_course(classroom.course_id)
+    keyboard = keyboards.TEACHER_EDIT_CLASSROOM_OWNER if teacher.id == course.teacher_id else keyboards.TEACHER_EDIT_CLASSROOM
+  
+    await query.edit_message_text(
+        f"Estudiante removido\n\n"
+        "Elija una opción:",
+        reply_markup=InlineKeyboardMarkup(keyboard)
+    )
+    return states.EDIT_CLASSROOM_CHOOSE_OPTION
+
+async def edit_classroom_remove_teacher(update: Update, context: ContextTypes):
+    """ Removes the selected teacher from the classroom.
+    Does not deletes the teacher from the database, only the association"""
+    query = update.callback_query
+    query.answer()
+
+    teacher = teacher_sql.get_teacher(user_sql.get_user_by_chatid(update.callback_query.message.chat_id).id)
+    teacher_to_id = int(query.data.split("#")[1])   
+    # check if teacher's active classroom is the current one and if so set it to None
+    teacher_to = teacher_sql.get_teacher(teacher_to_id)
+    if teacher_to.active_classroom_id == teacher.active_classroom_id:
+        teacher_sql.set_teacher_active_classroom(teacher_to_id, None)
+        logger.info(f"Teacher {teacher_to_id} active classroom set to None when removed from classroom {teacher.active_classroom_id}")
+    # remove teacher from classroom
+    teacher_classroom_sql.remove_teacher(teacher_to_id, teacher.active_classroom_id)
+  
+    await query.edit_message_text(
+        f"Profesor removido\n\n"
+        "Elija una opción:",
+        reply_markup=InlineKeyboardMarkup(keyboards.TEACHER_EDIT_CLASSROOM_OWNER)
+    )
+    return states.EDIT_CLASSROOM_CHOOSE_OPTION
+
+
 
 async def edit_classroom_back(update: Update, context: ContextTypes):
     """Returns to settings menu"""
@@ -500,6 +647,18 @@ edit_classroom_conv = ConversationHandler(
         states.EDIT_CLASSROOM_CHOOSE_OPTION: [CallbackQueryHandler(edit_classroom_choose_option, pattern=r"^option_")],
         states.EDIT_CLASSROOM_NAME: [MessageHandler(filters.TEXT & ~filters.COMMAND, edit_classroom_name)],
         states.EDIT_CLASSROOM_PASSWORD: [MessageHandler(filters.TEXT & ~filters.COMMAND, edit_classroom_password)],
+        states.EDIT_CLASSROOM_CHANGE: [
+            CallbackQueryHandler(edit_classroom_change, pattern=r"^change_classroom"),
+            paginator_handler
+            ],
+        states.EDIT_CLASSROOM_REMOVE_STUDENT: [
+            CallbackQueryHandler(edit_classroom_remove_student, pattern=r"^remove_student"),
+            paginator_handler
+            ],
+        states.EDIT_CLASSROOM_REMOVE_TEACHER: [
+            CallbackQueryHandler(edit_classroom_remove_teacher, pattern=r"^remove_teacher"),
+            paginator_handler
+            ],
     },
     fallbacks=[
         MessageHandler(filters.Regex("^Atrás$"), back_to_teacher_menu),

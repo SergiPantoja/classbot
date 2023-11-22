@@ -1,3 +1,5 @@
+from sqlalchemy import select
+
 from models.teacher_classroom import Teacher_classroom
 from sql import session
 
@@ -22,4 +24,9 @@ def add_teacher_classroom(teacher_id: int, classroom_id: int) -> None:
         s.add(Teacher_classroom(teacher_id=teacher_id, classroom_id=classroom_id))
         s.commit()
 
-
+def remove_teacher(teacher_id: int, classroom_id: int) -> None:
+    """ Removes the teacher from the classroom. """
+    with session() as s:
+        teacher_classroom = s.execute(select(Teacher_classroom).where(Teacher_classroom.teacher_id == teacher_id).where(Teacher_classroom.classroom_id == classroom_id)).scalar_one()
+        s.delete(teacher_classroom)
+        s.commit()
