@@ -369,6 +369,31 @@ async def edit_classroom_choose_option(update: Update, context: ContextTypes):
         )
         return states.EDIT_CLASSROOM_NAME
     
+    elif option == "option_edit_classroom_passwords":
+        # asks to choose between teacher and student password
+        await query.edit_message_text(
+            "Cuál contraseña desea cambiar?",
+            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Profesor", callback_data="option_edit_teacher_password")], [InlineKeyboardButton("Estudiante", callback_data="option_edit_student_password")], [InlineKeyboardButton("Atrás", callback_data="option_edit_classroom_back")]]),
+        )
+        return states.EDIT_CLASSROOM_CHOOSE_OPTION
+    elif option == "option_edit_teacher_password":
+        # asks to input new password
+        context.user_data["edit_classroom"]["password_type"] = "teacher_auth"
+        await query.message.reply_text(
+            "Ingresa la nueva contraseña de profesor:",
+            reply_markup=ReplyKeyboardRemove(),
+        )
+        return states.EDIT_CLASSROOM_PASSWORD
+    elif option == "option_edit_student_password":
+        # asks to input new password
+        context.user_data["edit_classroom"]["password_type"] = "student_auth"
+        await query.message.reply_text(
+            "Ingresa la nueva contraseña de estudiante:",
+            reply_markup=ReplyKeyboardRemove(),
+        )
+        return states.EDIT_CLASSROOM_PASSWORD
+        
+
     elif option == "option_edit_classroom_back":
         # back to settings menu
         await query.message.reply_text(
@@ -404,7 +429,28 @@ async def edit_classroom_name(update: Update, context: ContextTypes):
     )
     return states.EDIT_COURSE_CHOOSE_OPTION
 
+async def edit_classroom_password(update: Update, context: ContextTypes):
+    # get password
+    password = update.message.text
+    # get classroom id
+    teacher = teacher_sql.get_teacher(user_sql.get_user_by_chatid(update.message.chat_id).id)
+    classroom_id = teacher.active_classroom_id
+    # get password type
+    password_type = context.user_data["edit_classroom"]["password_type"]
+    # update classroom password
+    classroom_sql.update_classroom_password(classroom_id, password, password_type)
+    # get classroom
+    classroom = classroom_sql.get_classroom(classroom_id)
 
+    course = course_sql.get_course(classroom.course_id)
+    keyboard = keyboards.TEACHER_EDIT_CLASSROOM_OWNER if teacher.id == course.teacher_id else keyboards.TEACHER_EDIT_CLASSROOM
+    # notif
+    await update.message.reply_text(
+        f"Contraseña cambiada\n\n"
+        "Elija una opcion:",
+        reply_markup=InlineKeyboardMarkup(keyboard)
+    )
+    return states.EDIT_COURSE_CHOOSE_OPTION
 
 
 async def edit_classroom_back(update: Update, context: ContextTypes):
@@ -453,6 +499,7 @@ edit_classroom_conv = ConversationHandler(
     states={
         states.EDIT_CLASSROOM_CHOOSE_OPTION: [CallbackQueryHandler(edit_classroom_choose_option, pattern=r"^option_")],
         states.EDIT_CLASSROOM_NAME: [MessageHandler(filters.TEXT & ~filters.COMMAND, edit_classroom_name)],
+        states.EDIT_CLASSROOM_PASSWORD: [MessageHandler(filters.TEXT & ~filters.COMMAND, edit_classroom_password)],
     },
     fallbacks=[
         MessageHandler(filters.Regex("^Atrás$"), back_to_teacher_menu),

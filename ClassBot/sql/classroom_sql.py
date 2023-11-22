@@ -37,3 +37,13 @@ def update_classroom_name(classroom_id: int, new_name: str):
     with session() as s:
         s.query(Classroom).filter(Classroom.id == classroom_id).update({"name": new_name})
         s.commit()
+
+def update_classroom_password(classroom_id: int, password: str, password_type: str):
+    """ Updates the classroom password. 
+    password_type can be "teacher_auth" or "student_auth" """
+    # check if password_type is valid (to avoid sql injection)
+    if password_type not in ["teacher_auth", "student_auth"]:
+        raise ValueError("Invalid password_type")
+    with session() as s:
+        s.query(Classroom).filter(Classroom.id == classroom_id).update({password_type: password})
+        s.commit()
