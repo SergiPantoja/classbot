@@ -1,5 +1,4 @@
 """ A paginator for inline keyboard buttons. For selecting among many options. """
-
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import CallbackQueryHandler, ContextTypes
 

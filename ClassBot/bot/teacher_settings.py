@@ -49,7 +49,6 @@ async def back_to_teacher_menu(update: Update, context: ContextTypes):
     return ConversationHandler.END
 
 
-
 # Edit course conversation
 async def edit_course(update: Update, context: ContextTypes):
     """ Entry point of the edit course conversation.
@@ -498,7 +497,6 @@ async def edit_classroom_choose_option(update: Update, context: ContextTypes):
         
         return ConversationHandler.END
     
-
 async def edit_classroom_name(update: Update, context: ContextTypes):
     # get name
     name = update.message.text
@@ -651,8 +649,6 @@ async def edit_classroom_delete(update: Update, context: ContextTypes):
         )
         return states.EDIT_CLASSROOM_CHOOSE_OPTION
 
-
-
 async def edit_classroom_back(update: Update, context: ContextTypes):
     """Returns to settings menu"""
     query = update.callback_query
@@ -668,8 +664,6 @@ async def edit_classroom_back(update: Update, context: ContextTypes):
         context.user_data.pop("edit_classroom")
 
     return ConversationHandler.END
-
-
 
 
 # Handlers

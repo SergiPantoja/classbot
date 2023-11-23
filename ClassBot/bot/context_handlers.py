@@ -1,11 +1,11 @@
 """ This module contains mostly command/message handlers for the bot that 
 usually need to desambiguate using context data. For example, between a teacher
 and a student or depending on what menu the user is navigating."""
-
 from telegram import Update, ReplyKeyboardMarkup
 from telegram.ext import ContextTypes, MessageHandler, filters, ConversationHandler
 
 from bot.teacher_settings import teacher_settings, back_to_teacher_menu
+
 
 async def handle_keyerror(update: Update, context: ContextTypes):   
     """ if a keyerror in context appears, most likely because bot restarted, 

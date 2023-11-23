@@ -33,4 +33,3 @@ def add_student(user_id: int) -> None:
     with session() as s:
         s.add(Student(id=user_id))
         s.commit()
-

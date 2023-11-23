@@ -3,6 +3,7 @@ from sqlalchemy import select
 from models.teacher_classroom import Teacher_classroom
 from sql import session
 
+
 def get_teacher_ids(classroom_id: int) -> list[int]:
     """ Returns a list of teacher ids for the given classroom. """
     with session() as s:
@@ -17,6 +18,7 @@ def exists(teacher_id: int, classroom_id: int) -> bool:
     """ Returns True if the teacher_classroom exists. """
     with session() as s:
         return s.query(Teacher_classroom).filter(Teacher_classroom.teacher_id == teacher_id).filter(Teacher_classroom.classroom_id == classroom_id).first() is not None
+
 
 def add_teacher_classroom(teacher_id: int, classroom_id: int) -> None:
     """ Adds a new teacher_classroom to the database. """

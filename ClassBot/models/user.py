@@ -1,10 +1,12 @@
 import datetime
 from typing import TYPE_CHECKING, Optional
+
 from sqlalchemy import DateTime
 from sqlalchemy.sql import func
 from sqlalchemy.orm import mapped_column, Mapped, relationship
 
 from models.base import Base
+
 
 if TYPE_CHECKING:
     from models.student import Student # avoid circular import

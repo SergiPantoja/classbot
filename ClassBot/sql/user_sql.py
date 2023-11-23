@@ -12,6 +12,7 @@ def get_user_by_chatid(chatid: int) -> User | None:
     with session() as s:
         return s.query(User).filter(User.telegram_chatid == chatid).first()
 
+
 def add_user(chatid: int, fullname: str) -> None:
     """ Adds a new user to the database. """
     with session() as s:

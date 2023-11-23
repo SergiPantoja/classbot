@@ -3,6 +3,7 @@ from telegram.ext import ContextTypes, MessageHandler, filters
 
 from utils.logger import logger
 
+
 async def get_chat_id(update: Update, context: ContextTypes):
     """ Returns the chat id of the current chat. """
     await context.bot.send_message(

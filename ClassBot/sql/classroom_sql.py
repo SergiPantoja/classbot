@@ -3,6 +3,7 @@ from sqlalchemy import select
 from models.classroom import Classroom
 from sql import session
 
+
 def get_classroom(id: int) -> Classroom | None:
     """ Returns a classroom object with the given id. None if not found."""
     with session() as s:
@@ -27,6 +28,7 @@ def get_classrooms_by_course(course_id: int) -> list[Classroom]:
     """ Returns a list of classrooms belonging to the given course. """
     with session() as s:
         return s.query(Classroom).filter(Classroom.course_id == course_id).all()
+
 
 def add_classroom(course_id: int, name: str, teacher_auth: str, student_auth: str) -> None:
     """ Adds a new classroom to the database. """

@@ -1,8 +1,10 @@
 from typing import TYPE_CHECKING, Optional, List
+
 from sqlalchemy import ForeignKey
 from sqlalchemy.orm import mapped_column, Mapped, relationship
 
 from models.base import Base
+
 
 if TYPE_CHECKING:
     from models.user import User # avoid circular import

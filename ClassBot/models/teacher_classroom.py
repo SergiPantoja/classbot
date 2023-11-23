@@ -1,13 +1,14 @@
 from typing import TYPE_CHECKING
+
 from sqlalchemy import ForeignKey
 from sqlalchemy.orm import mapped_column, Mapped, relationship
 
 from models.base import Base
 
+
 if TYPE_CHECKING:
     from models.teacher import Teacher # avoid circular import
     from models.classroom import Classroom
-
 
 class Teacher_classroom(Base):
     """ association table between teacher and classroom """

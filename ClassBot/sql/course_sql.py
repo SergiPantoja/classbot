@@ -3,6 +3,7 @@ from sqlalchemy import select
 from models.course import Course
 from sql import session
 
+
 def get_course(id: int) -> Course | None:
     """ Returns a course object with the given id. None if not found."""
     with session() as s:
@@ -17,6 +18,7 @@ def get_courses_by_teacher(teacher_id: int) -> list[Course]:
     """ Returns a list of courses taught by the given teacher. """
     with session() as s:
         return s.query(Course).filter(Course.teacher_id == teacher_id).all()
+
 
 def add_course(teacher_id: int, name: str) -> None:
     """ Adds a new course to the database. """
