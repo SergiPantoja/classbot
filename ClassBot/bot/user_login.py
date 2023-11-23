@@ -348,6 +348,17 @@ async def new_classroom(update: Update, context: ContextTypes.DEFAULT_TYPE):
         teacher_id = user_sql.get_user_by_chatid(update.effective_chat.id).id
         # get course_id from context
         course_id = context.user_data["course_id"]
+
+        # check if a classroom of the same name already exists in this course
+        existing_classrooms = classroom_sql.get_classrooms_by_course(course_id)
+        for cr in existing_classrooms:
+            if classroom_name == cr.name:
+                await update.message.reply_text(
+                    " Ya existe un aula con este nombre. Ingrese uno diferente.",
+                    reply_markup=ReplyKeyboardMarkup(keyboards.CANCEL, one_time_keyboard=True, resize_keyboard=True)
+                )
+                return states.NEW_CLASSROOM
+
         # create classroom in db
         classroom_sql.add_classroom(course_id, classroom_name, teacher_auth, student_auth)
         logger.info("New classroom added to db.\n\n")
