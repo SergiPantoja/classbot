@@ -8,6 +8,7 @@ if TYPE_CHECKING:
     from models.user import User # avoid circular import
     from models.course import Course
     from models.teacher_classroom import Teacher_classroom
+    from models.token import Token
     from models.student_token import Student_token
 
 # specialization of User table
@@ -24,10 +25,13 @@ class Teacher(Base):
     courses: Mapped[Optional[List["Course"]]] = relationship(back_populates="teacher")
     # Many-to-many relationship with classroom
     classrooms: Mapped[Optional[List["Teacher_classroom"]]] = relationship(back_populates="teacher", cascade='all, delete-orphan')
+    # one-to-many relationship with tokens created by the teacher (optional, dont
+    # need to delete tokens when teacher is deleted)
+    created_tokens: Mapped[Optional[List["Token"]]] = relationship(back_populates="teacher_creator")
     # Relationship tokens_given: One-to-many relationship with token (dont need 
     # to delete tokens when teacher is deleted)
     tokens_given: Mapped[Optional[List["Student_token"]]] = relationship(back_populates="given_by")
     
-
     def __repr__(self) -> str:
         return f'Teacher(id={self.id})'
+    

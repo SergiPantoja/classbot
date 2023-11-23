@@ -33,9 +33,9 @@ class Token(Base):
     # Many-to-one relationship with course
     course: Mapped["Course"] = relationship(back_populates='tokens')
     # Many-to-one relationship with teacher (Optional: some tokens are created by the system)
-    teacher_creator: Mapped[Optional["Teacher"]] = relationship(back_populates='tokens')
+    teacher_creator: Mapped[Optional["Teacher"]] = relationship(back_populates='created_tokens')
     # Many-to-many relationship with student
-    students: Mapped[Optional[List["Student_token"]]] = relationship(back_populates='tokens', cascade='all, delete-orphan')
+    students: Mapped[Optional[List["Student_token"]]] = relationship(back_populates='token', cascade='all, delete-orphan')
 
     def __repr__(self) -> str:
         return f'Token(id={self.id}, token_type_id={self.token_type_id}, course_id={self.course_id}, teacher_creator_id={self.teacher_creator_id}, name={self.name}, value={self.value}, description={self.description}, creation_date={self.creation_date}, automatic={self.automatic}, image_url={self.image_url})'
