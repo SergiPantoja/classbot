@@ -7,6 +7,8 @@ from models.base import Base
 if TYPE_CHECKING:
     from models.teacher import Teacher # avoid circular import
     from models.classroom import Classroom
+    from models.token_type import Token_type
+    from models.token import Token
 
 class Course(Base):
     __tablename__ = 'course'
@@ -19,6 +21,10 @@ class Course(Base):
     teacher: Mapped["Teacher"] = relationship(back_populates='courses')
     # One-to-many relationship with classroom
     classrooms: Mapped[Optional[List["Classroom"]]] = relationship(back_populates='course', cascade='all, delete-orphan')
+    # One-to-many relationship with token_type
+    token_types: Mapped[Optional[List["Token_type"]]] = relationship(back_populates='course', cascade='all, delete-orphan')
+    # One-to-many relationship with token
+    tokens: Mapped[Optional[List["Token"]]] = relationship(back_populates='course', cascade='all, delete-orphan')
 
     def __repr__(self) -> str:
         return f'Course(id={self.id}, teacher_id={self.teacher_id}, name={self.name})'
