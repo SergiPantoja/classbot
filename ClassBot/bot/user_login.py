@@ -11,7 +11,7 @@ from telegram.ext import (
 from utils.logger import logger
 from sql import (
     user_sql, student_sql, teacher_sql, course_sql, classroom_sql, student_classroom_sql,
-    teacher_classroom_sql
+    teacher_classroom_sql, token_sql, token_type_sql
 )
 from bot.utils import states, keyboards
 from bot.utils.inline_keyboard_pagination import paginator, paginated_keyboard, paginator_handler
@@ -373,6 +373,19 @@ async def new_classroom(update: Update, context: ContextTypes.DEFAULT_TYPE):
         # set active classroom of teacher to this classroom
         teacher_sql.set_teacher_active_classroom(teacher_id, classroom_id)
         logger.info("Teacher %s logged in to classroom %s.\n\n", update.message.from_user.first_name, classroom_name)
+        
+        try:
+            # create token of type Medalla for this classroom
+            token_type_id = token_type_sql.get_token_type_by_type("Medalla").id
+            name = f"{classroom_id}_Medalla de bienvenida"
+            value = 1000
+            image_path = "path:../assets/placeholders/medalla_de_bienvenida.png"
+            token_sql.add_token(name, value, token_type_id, course_id, automatic=True, image_url=image_path)
+            logger.info("New token added to db.\n\n")
+        except Exception as e:
+            logger.error("Error creating token: %s\n\n", e)
+            raise e
+
 
         # add user role to context
         context.user_data["role"] = "teacher"
@@ -403,7 +416,6 @@ async def new_classroom(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 reply_markup=ReplyKeyboardMarkup(keyboards.CANCEL, one_time_keyboard=True, resize_keyboard=True),
             )
         return states.NEW_CLASSROOM
-
 
 async def cancel_user_login(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """cancels the log in process. returns to initial state of the bot.

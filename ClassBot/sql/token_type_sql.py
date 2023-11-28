@@ -10,7 +10,8 @@ def get_token_type(id: int) -> Token_type | None:
         return s.query(Token_type).filter(Token_type.id == id).first()
     
 def get_token_type_by_type(type: str) -> Token_type | None:
-    """ Returns the first token_type object with the given type. None if not found."""
+    """ Returns the first token_type object with the given type. None if not found.
+        In this case type is unique, so it should return only one object."""
     with session() as s:
         return s.query(Token_type).filter(Token_type.type == type).first()
 

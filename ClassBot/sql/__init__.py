@@ -23,10 +23,13 @@ def create_default_token_types(session):
     # at the start of the bot, create the default token types usable by the bot
     # in every course.
     with session() as s:
-        # create default token types
-        s.add(Token_type(type="Medalla"))
-        s.add(Token_type(type="Misceláneo"))
+        # create default token types if they don't exist
+        if not s.query(Token_type).filter(Token_type.type == "Medalla").first():
+            s.add(Token_type(type="Medalla", hidden=True))
+        if not s.query(Token_type).filter(Token_type.type == "Miscelaneo").first():
+            s.add(Token_type(type="Miscelaneo", hidden=True))
         s.commit()
+        
 
 
 try:
