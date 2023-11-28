@@ -11,7 +11,7 @@ from telegram.ext import (
 from utils.logger import logger
 from sql import (
     user_sql, student_sql, teacher_sql, course_sql, classroom_sql, student_classroom_sql,
-    teacher_classroom_sql, token_sql, token_type_sql
+    teacher_classroom_sql, token_sql, token_type_sql, student_token_sql
 )
 from bot.utils import states, keyboards
 from bot.utils.inline_keyboard_pagination import paginator, paginated_keyboard, paginator_handler
@@ -131,6 +131,11 @@ async def student_login(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if not student_classroom_sql.exists(student_id, classroom.id):
             student_classroom_sql.add_student_classroom(student_id, classroom.id)
             logger.info("New student_classroom added to db.\n\n")
+            # Give welcome token medal to student
+            token = token_sql.get_token_by_name(f"{classroom.id}_Medalla de bienvenida")
+            if not student_token_sql.exists(student_id, token.id):
+                student_token_sql.add_student_token(student_id, token.id)
+                logger.info("Welcome medal assigned to student.\n\n")
         else:
             logger.info("Student_classroom already exists.\n\n")
         # set active classroom of student to this classroom
