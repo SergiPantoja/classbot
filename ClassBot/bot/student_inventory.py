@@ -1,4 +1,4 @@
-from telegram import Update, ReplyKeyboardMarkup, ReplyKeyboardRemove, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram import Update, ReplyKeyboardMarkup, InlineKeyboardButton
 from telegram.ext import (
     ContextTypes,
     ConversationHandler,
@@ -10,7 +10,7 @@ from telegram.ext import (
 from utils.logger import logger
 from bot.utils import states, keyboards
 from bot.utils.inline_keyboard_pagination import paginated_keyboard, paginator_handler
-from sql import user_sql, student_sql, student_classroom_sql, student_token_sql, token_sql, token_type_sql, classroom_sql, course_sql
+from sql import user_sql, student_sql, student_token_sql, token_sql, classroom_sql, course_sql
 
 
 async def student_inventory(update: Update, context: ContextTypes):

@@ -40,7 +40,7 @@ async def back_to_menu(update: Update, context: ContextTypes):
         role = context.user_data["role"]
     except:
         await handle_keyerror(update, context)
-        raise KeyError("Keyerror in settings: User role not found in context.user_data")
+        raise KeyError("Keyerror: User role not found in context.user_data")
     
     if role == "teacher":
         await back_to_teacher_menu(update, context)
