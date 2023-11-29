@@ -1,6 +1,6 @@
 from typing import TYPE_CHECKING, Optional, List
 
-from sqlalchemy import ForeignKey
+from sqlalchemy import ForeignKey, UniqueConstraint
 from sqlalchemy.orm import mapped_column, Mapped, relationship
 
 from models.base import Base
@@ -22,6 +22,11 @@ class Token_type(Base):
     course: Mapped[Optional["Course"]] = relationship(back_populates='token_types')
     # One-to-many relationship with token
     tokens: Mapped[Optional[List["Token"]]] = relationship(back_populates='token_type', cascade='all, delete-orphan')
+
+    __table_args__ = (
+        # Unique constraint for course_id and type
+        UniqueConstraint('course_id', 'type'),
+    )
 
     def __repr__(self) -> str:
         return f'Token_type(id={self.id}, course_id={self.course_id}, type={self.type}, hidden={self.hidden})'

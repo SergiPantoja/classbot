@@ -1,6 +1,5 @@
 from telegram import Update, ReplyKeyboardMarkup, ReplyKeyboardRemove, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import (
-    CommandHandler,
     ContextTypes,
     ConversationHandler,
     MessageHandler,
@@ -45,6 +44,8 @@ async def back_to_teacher_menu(update: Update, context: ContextTypes):
     # Sanitize context.user_data
     if "edit_course" in context.user_data:
         context.user_data.pop("edit_course")
+    if "edit_classroom" in context.user_data:
+        context.user_data.pop("edit_classroom")
 
     return ConversationHandler.END
 

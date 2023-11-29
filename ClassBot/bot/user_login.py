@@ -383,8 +383,8 @@ async def new_classroom(update: Update, context: ContextTypes.DEFAULT_TYPE):
             # create token of type Medalla for this classroom
             token_type_id = token_type_sql.get_token_type_by_type("Medalla").id
             name = f"{classroom_id}_Medalla de bienvenida"
-            value = 1000
-            image_path = "path:../assets/placeholders/medalla_de_bienvenida.png"
+            value = 10000
+            image_path = "path:./assets/placeholders/medalla_de_bienvenida.png"
             token_sql.add_token(name, value, token_type_id, course_id, automatic=True, image_url=image_path)
             logger.info("New token added to db.\n\n")
         except Exception as e:

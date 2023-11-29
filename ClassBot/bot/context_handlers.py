@@ -5,6 +5,7 @@ from telegram import Update, ReplyKeyboardMarkup
 from telegram.ext import ContextTypes, MessageHandler, filters, ConversationHandler
 
 from bot.teacher_settings import teacher_settings, back_to_teacher_menu
+from bot.student_inventory import back_to_student_menu
 
 
 async def handle_keyerror(update: Update, context: ContextTypes):   
@@ -44,8 +45,7 @@ async def back_to_menu(update: Update, context: ContextTypes):
     if role == "teacher":
         await back_to_teacher_menu(update, context)
     else:
-        pass
-        #await back_to_student_menu(update, context)
+        await back_to_student_menu(update, context)
 
 async def log_out(update: Update, context: ContextTypes):
     """Logs out the user

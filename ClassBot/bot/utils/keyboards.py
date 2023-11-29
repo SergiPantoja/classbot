@@ -47,4 +47,5 @@ TEACHER_EDIT_CLASSROOM_OWNER = [
     [InlineKeyboardButton("Atrás", callback_data="option_edit_classroom_back")],
 ]
 
-STUDENT_MAIN_MENU = [["Opciones", "..."]]
+STUDENT_MAIN_MENU = [["Opciones", "Inventario"], ["..."]]
+STUDENT_INVENTORY = [["Medallas", "Atrás"]]
