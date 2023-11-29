@@ -10,6 +10,7 @@ if TYPE_CHECKING:
     from models.course import Course # avoid circular import
     from models.teacher_classroom import Teacher_classroom
     from models.student_classroom import Student_classroom
+    from models.conference import Conference
 
 class Classroom(Base):
     __tablename__ = 'classroom'
@@ -26,6 +27,8 @@ class Classroom(Base):
     teachers: Mapped[Optional[List["Teacher_classroom"]]] = relationship(back_populates="classroom", cascade="all, delete-orphan")
     # Many-to-many relationship with student
     students: Mapped[Optional[List["Student_classroom"]]] = relationship(back_populates="classroom", cascade="all, delete-orphan")
+    # one-to-many relationship with conference
+    conferences: Mapped[Optional[List["Conference"]]] = relationship(back_populates="classroom", cascade="all, delete-orphan")
     
     def __repr__(self) -> str:
         return f'Classroom(id={self.id}, course_id={self.course_id}, name={self.name}, teacher_auth={self.teacher_auth}, student_auth={self.student_auth})'
