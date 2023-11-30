@@ -59,7 +59,7 @@ TEACHER_CONFERENCE_EDIT = [
     ],
     [
         InlineKeyboardButton("Cambiar archivo", callback_data="conference_edit_file"),
-        InlineKeyboardButton("Eliminar", callback_data="conference_delete"),
+        InlineKeyboardButton("Eliminar", callback_data="conference_edit_delete"),
     ],
     [InlineKeyboardButton("Atrás", callback_data="conference_back")],
 ]

@@ -158,7 +158,140 @@ async def teacher_conference_select(update: Update, context: ContextTypes):
             )
         return states.T_CONFERENCE_EDIT_OPTION
 
+async def teacher_conference_edit_option(update: Update, context: ContextTypes):
+    """ Edits or deletes a conference """
+    query = update.callback_query
+    query.answer()
 
+    if query.data == "conference_edit_name":
+        logger.info("Editing conference name...")
+        # ask for new name
+        await query.message.reply_text(
+            "Ingresa el nuevo nombre de la conferencia",
+            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Atrás", callback_data="conference_back")]])
+        )
+        return states.T_EDIT_CONFERENCE_NAME
+    elif query.data == "conference_edit_date":
+        logger.info("Editing conference date...")
+        # ask for new date
+        await query.message.reply_text(
+            "Ingresa la nueva fecha de la conferencia en este formato: dd-mm-aaaa",
+            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Atrás", callback_data="conference_back")]])
+        )
+        return states.T_EDIT_CONFERENCE_DATE
+    elif query.data == "conference_edit_file":
+        logger.info("Editing conference file...")
+        # ask for new file
+        await query.message.reply_text(
+            "Envie documentos de la conferencia (imagen o pdf).",
+            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Atrás", callback_data="conference_back")]])
+        )
+        return states.T_EDIT_CONFERENCE_FILE
+    elif query.data == "conference_edit_delete":
+        logger.info("Deleting conference...")
+        # get conference id
+        conference_id = context.user_data["conference"]["id"]
+        # delete conference from db
+        conference_sql.delete_conference(conference_id)
+        # get back to main menu
+        teacher = teacher_sql.get_teacher(user_sql.get_user_by_chatid(update.effective_user.id).id)
+        # get active classroom from db
+        classroom = classroom_sql.get_classroom(teacher.active_classroom_id)
+        # get course name
+        course_name = course_sql.get_course(classroom.course_id).name
+        await query.message.reply_text(
+            f"Bienvenido profe {user_sql.get_user_by_chatid(update.effective_user.id).fullname}!\n\n"
+            f"Curso: {course_name}\n"
+            f"Aula: {classroom.name}\n"
+            f"Menu en construcción...",
+            reply_markup=ReplyKeyboardMarkup(keyboards.TEACHER_MAIN_MENU, one_time_keyboard=True, resize_keyboard=True),
+        )
+        if "conference" in context.user_data:
+            context.user_data.pop("conference")
+        return ConversationHandler.END
+    
+async def teacher_conference_edit_name(update: Update, context: ContextTypes):
+    """ Edits conference name """
+    # get conference id
+    conference_id = context.user_data["conference"]["id"]
+    # get conference from db
+    conference = conference_sql.get_conference(conference_id)
+    # update conference name
+    conference_sql.update_conference_name(conference_id, name=update.message.text)
+    # show conference info and send photo or document
+    # use try-except to send photo if BadRequest send document 
+    if conference.fileID:
+        try:
+            await update.message.reply_photo(conference.fileID)
+        except BadRequest:
+            await update.message.reply_document(conference.fileID)
+    await update.message.reply_text(
+            f"Nombre: {conference_sql.get_conference(conference_id).name}\n"
+            f"Fecha: {datetime.date(conference.date.year, conference.date.month, conference.date.day)}\n",
+            reply_markup=InlineKeyboardMarkup(keyboards.TEACHER_CONFERENCE_EDIT)
+        )
+    return states.T_CONFERENCE_EDIT_OPTION
+
+async def teacher_conference_edit_date(update: Update, context: ContextTypes):
+    """ Edits conference date """
+    # get conference id
+    conference_id = context.user_data["conference"]["id"]
+    # get conference from db
+    conference = conference_sql.get_conference(conference_id)
+    # update conference date
+    date_str = update.message.text
+    try:
+        date = datetime.datetime.strptime(date_str, "%d-%m-%Y")
+    except ValueError:
+        await update.message.reply_text(
+            "Formato de fecha inválido, por favor ingresa la fecha en este formato: dd-mm-aaaa",
+            reply_markup=ReplyKeyboardRemove()
+        )
+        return states.T_EDIT_CONFERENCE_DATE
+    conference_sql.update_conference_date(conference_id, date=date)
+    conference = conference_sql.get_conference(conference_id)
+    # show conference info and send photo or document
+    # use try-except to send photo if BadRequest send document 
+    if conference.fileID:
+        try:
+            await update.message.reply_photo(conference.fileID)
+        except BadRequest:
+            await update.message.reply_document(conference.fileID)
+    await update.message.reply_text(
+            f"Nombre: {conference.name}\n"
+            f"Fecha: {datetime.date(conference.date.year, conference.date.month, conference.date.day)}\n",
+            reply_markup=InlineKeyboardMarkup(keyboards.TEACHER_CONFERENCE_EDIT)
+        )
+    return states.T_CONFERENCE_EDIT_OPTION
+
+async def teacher_conference_edit_file(update: Update, context: ContextTypes):
+    """ Edits conference file """
+    # get conference id
+    conference_id = context.user_data["conference"]["id"]
+    # get conference from db
+    conference = conference_sql.get_conference(conference_id)
+    # update conference file
+    file = update.message.document or update.message.photo
+    if file:
+        if update.message.document:
+            fid = file.file_id
+        else:
+            fid = file[-1].file_id
+        conference_sql.update_conference_fileID(conference_id, fileID=fid)
+    conference = conference_sql.get_conference(conference_id)
+    # show conference info and send photo or document
+    # use try-except to send photo if BadRequest send document 
+    if conference.fileID:
+        try:
+            await update.message.reply_photo(conference.fileID)
+        except BadRequest:
+            await update.message.reply_document(conference.fileID)
+    await update.message.reply_text(
+            f"Nombre: {conference.name}\n"
+            f"Fecha: {datetime.date(conference.date.year, conference.date.month, conference.date.day)}\n",
+            reply_markup=InlineKeyboardMarkup(keyboards.TEACHER_CONFERENCE_EDIT)
+        )
+    return states.T_CONFERENCE_EDIT_OPTION
 
 
 async def teacher_conference_back(update: Update, context: ContextTypes):
@@ -201,6 +334,10 @@ teacher_conferences_conv = ConversationHandler(
             CallbackQueryHandler(teacher_conference_select, pattern=r"^(conference#|conference_create)"),
             paginator_handler
             ],
+        states.T_CONFERENCE_EDIT_OPTION: [CallbackQueryHandler(teacher_conference_edit_option, pattern=r"^conference_edit_")],
+        states.T_EDIT_CONFERENCE_NAME: [MessageHandler(filters.TEXT & ~filters.COMMAND, teacher_conference_edit_name)],
+        states.T_EDIT_CONFERENCE_DATE: [MessageHandler(filters.TEXT & ~filters.COMMAND, teacher_conference_edit_date)],
+        states.T_EDIT_CONFERENCE_FILE: [MessageHandler(filters.PHOTO | filters.Document.ALL , teacher_conference_edit_file)],
     },
     fallbacks=[
         CallbackQueryHandler(teacher_conference_back, pattern=r"^(conference_back|back)$"),
