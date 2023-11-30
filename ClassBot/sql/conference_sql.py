@@ -12,9 +12,10 @@ def get_conference(id: int) -> Conference | None:
         return s.query(Conference).filter(Conference.id == id).first()
 
 def get_conferences_by_classroom(classroom_id: int) -> list[Conference]:
-    """ Returns a list of conferences belonging to the given classroom. """
+    """ Returns a list of conferences belonging to the given classroom. 
+    sort by date"""
     with session() as s:
-        return s.query(Conference).filter(Conference.classroom_id == classroom_id).all()
+        return s.query(Conference).filter(Conference.classroom_id == classroom_id).order_by(Conference.date).all()
 
 
 def add_conference(classroom_id: int, name: str, date: datetime, fileID: str = None) -> None:
