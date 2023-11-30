@@ -11,6 +11,7 @@ from bot.utils.commands import get_chat_id_handler
 from bot.context_handlers import settings_handler, back_to_menu_handler, log_out_handler
 from bot.user_login import user_login_conv
 from bot.teacher_settings import edit_course_conv, edit_classroom_conv
+from bot.teacher_conferences import teacher_conferences_conv
 from bot.student_inventory import student_inventory_handler, inv_medal_conv
 
 
@@ -63,6 +64,7 @@ def _add_handlers(app):
 
     app.add_handler(edit_course_conv)   # needs to be first to avoid conflict with other handlers
     app.add_handler(edit_classroom_conv)
+    app.add_handler(teacher_conferences_conv)
 
     app.add_handler(inv_medal_conv)
     app.add_handler(student_inventory_handler)

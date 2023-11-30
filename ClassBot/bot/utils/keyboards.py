@@ -7,7 +7,7 @@ SELECT_ROLE = [["Estudiante", "Profesor"]]
 TEACHER_LOGIN = [["Ingresar al aula", "Crear"]]
 TEACHER_CREATE = [["Crear curso", "Crear aula"]]
 
-TEACHER_MAIN_MENU = [["Opciones", "..."]]
+TEACHER_MAIN_MENU = [["Opciones", "Conferencias del aula"], ["..."]]
 TEACHER_SETTINGS = [["Editar curso", "Editar aula"], ["Atrás", "Salir"]]
 TEACHER_EDIT_COURSE = [
     [
@@ -45,6 +45,23 @@ TEACHER_EDIT_CLASSROOM_OWNER = [
         InlineKeyboardButton("Eliminar aula", callback_data="option_delete_classroom"),
     ],
     [InlineKeyboardButton("Atrás", callback_data="option_edit_classroom_back")],
+]
+TEACHER_CONFERENCE_CREATE = [
+    [
+        InlineKeyboardButton("Crear conferencia", callback_data="conference_create"),
+        InlineKeyboardButton("Atrás", callback_data="conference_back"),
+    ],
+]
+TEACHER_CONFERENCE_EDIT = [
+    [
+        InlineKeyboardButton("Cambiar nombre", callback_data="conference_edit_name"),
+        InlineKeyboardButton("Cambiar fecha", callback_data="conference_edit_date"),
+    ],
+    [
+        InlineKeyboardButton("Cambiar archivo", callback_data="conference_edit_file"),
+        InlineKeyboardButton("Eliminar", callback_data="conference_delete"),
+    ],
+    [InlineKeyboardButton("Atrás", callback_data="conference_back")],
 ]
 
 STUDENT_MAIN_MENU = [["Opciones", "Inventario"], ["..."]]

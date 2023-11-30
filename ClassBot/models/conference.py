@@ -1,6 +1,7 @@
+import datetime
 from typing import TYPE_CHECKING, Optional, List
 
-from sqlalchemy import ForeignKey
+from sqlalchemy import ForeignKey, DateTime
 from sqlalchemy.orm import mapped_column, Mapped, relationship
 
 from models.base import Base
@@ -15,7 +16,7 @@ class Conference(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     classroom_id: Mapped[int] = mapped_column(ForeignKey('classroom.id'))
     name: Mapped[str]
-    date: Mapped[str]
+    date: Mapped[datetime.date] = mapped_column(DateTime(timezone=True))
     fileID: Mapped[Optional[str]] = mapped_column(default=None)
 
     # Many-to-one relationship with classroom

@@ -379,6 +379,7 @@ async def new_classroom(update: Update, context: ContextTypes.DEFAULT_TYPE):
         teacher_sql.set_teacher_active_classroom(teacher_id, classroom_id)
         logger.info("Teacher %s logged in to classroom %s.\n\n", update.message.from_user.first_name, classroom_name)
         
+        # to try it, this will be set up by the teacher later
         try:
             # create token of type Medalla for this classroom
             token_type_id = token_type_sql.get_token_type_by_type("Medalla").id

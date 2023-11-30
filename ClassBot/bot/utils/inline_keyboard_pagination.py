@@ -5,12 +5,14 @@ from telegram.ext import CallbackQueryHandler, ContextTypes
 
 ITEMS_PER_PAGE = 5
 
-def paginated_keyboard(buttons: list[InlineKeyboardButton], page: int = 1, context: ContextTypes = None, add_back = False) -> InlineKeyboardMarkup:
+def paginated_keyboard(buttons: list[InlineKeyboardButton], page: int = 1, context: ContextTypes = None, add_back = False, other_buttons: list[InlineKeyboardButton] = None) -> InlineKeyboardMarkup:
     """ Returns a paginated keyboard. """
     
     # save buttons in user_data
     if context:
-        context.user_data["buttons"] = buttons    
+        context.user_data["buttons"] = buttons
+        context.user_data["add_back"] = add_back
+        context.user_data["other_buttons"] = other_buttons
 
     start_index = (page - 1) * ITEMS_PER_PAGE
     end_index = start_index + ITEMS_PER_PAGE
@@ -26,6 +28,10 @@ def paginated_keyboard(buttons: list[InlineKeyboardButton], page: int = 1, conte
             keyboard.append([InlineKeyboardButton("<<", callback_data=f"page#{page - 1}")])
     elif end_index < len(buttons):    # if not in the last page
         keyboard.append([InlineKeyboardButton(">>", callback_data=f"page#{page + 1}")])
+
+    # if other buttons are provided, add them here
+    if other_buttons:
+        keyboard.append(other_buttons)
 
     # Add back button
     if add_back:
@@ -46,10 +52,12 @@ async def paginator(update: Update, context: ContextTypes) -> None:
     # buttons to pass to paginated_keyboard. Is user_data a good place to store this?
     try:
         buttons = context.user_data["buttons"]
+        add_back = context.user_data["add_back"] if "add_back" in context.user_data else False
+        other_buttons = context.user_data["other_buttons"] if "other_buttons" in context.user_data else None
     except KeyError:
         raise KeyError("No buttons found in user_data. Did you forget to add them?")
     
-    keyboard = paginated_keyboard(buttons, page)
+    keyboard = paginated_keyboard(buttons, page, add_back=add_back, other_buttons=other_buttons)
     await query.edit_message_reply_markup(keyboard)
 
 paginator_handler = CallbackQueryHandler(paginator, pattern=r"^page#")
