@@ -12,3 +12,5 @@ T_CREATE_CONFERENCE, T_SELECT_CONFERENCE, T_CREATE_CONFERENCE_NAME, T_CREATE_CON
 
 # student_inventory medal_conv states
 SI_SELECT_MEDAL = range(1)
+# student_conference states
+S_SELECT_CONFERENCE = range(1)

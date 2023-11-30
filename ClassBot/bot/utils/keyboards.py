@@ -7,7 +7,7 @@ SELECT_ROLE = [["Estudiante", "Profesor"]]
 TEACHER_LOGIN = [["Ingresar al aula", "Crear"]]
 TEACHER_CREATE = [["Crear curso", "Crear aula"]]
 
-TEACHER_MAIN_MENU = [["Opciones", "Conferencias del aula"], ["..."]]
+TEACHER_MAIN_MENU = [["Conferencias del aula", "Opciones"], ["..."]]
 TEACHER_SETTINGS = [["Editar curso", "Editar aula"], ["Atrás", "Salir"]]
 TEACHER_EDIT_COURSE = [
     [
@@ -64,5 +64,11 @@ TEACHER_CONFERENCE_EDIT = [
     [InlineKeyboardButton("Atrás", callback_data="conference_back")],
 ]
 
-STUDENT_MAIN_MENU = [["Opciones", "Inventario"], ["..."]]
+STUDENT_MAIN_MENU = [["Conferencias", "Inventario"], ["Opciones", "..."]]
 STUDENT_INVENTORY = [["Medallas", "Atrás"]]
+STUDENT_CONFERENCE_SELECTED = [
+    [
+        InlineKeyboardButton("Atrás", callback_data="back"),
+    ],
+]
+

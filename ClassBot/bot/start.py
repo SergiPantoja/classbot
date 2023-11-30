@@ -13,6 +13,7 @@ from bot.user_login import user_login_conv
 from bot.teacher_settings import edit_course_conv, edit_classroom_conv
 from bot.teacher_conferences import teacher_conferences_conv
 from bot.student_inventory import student_inventory_handler, inv_medal_conv
+from bot.student_conferences import student_conferences_conv
 
 
 # configs (move to file later)
@@ -67,6 +68,7 @@ def _add_handlers(app):
     app.add_handler(teacher_conferences_conv)
 
     app.add_handler(inv_medal_conv)
+    app.add_handler(student_conferences_conv)
     app.add_handler(student_inventory_handler)
 
     app.add_handler(settings_handler)

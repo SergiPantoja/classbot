@@ -13,7 +13,7 @@ from telegram.ext import (
 from utils.logger import logger
 from bot.utils import states, keyboards
 from bot.utils.inline_keyboard_pagination import paginated_keyboard, paginator_handler
-from sql import user_sql, teacher_sql, classroom_sql, course_sql, student_sql, student_classroom_sql, teacher_classroom_sql, conference_sql
+from sql import user_sql, teacher_sql, classroom_sql, course_sql, conference_sql
 from bot.teacher_settings import back_to_teacher_menu
 
 
