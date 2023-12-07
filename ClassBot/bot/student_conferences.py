@@ -13,7 +13,7 @@ from telegram.ext import (
 from utils.logger import logger
 from bot.utils import states, keyboards
 from bot.utils.inline_keyboard_pagination import paginated_keyboard, paginator_handler
-from sql import user_sql, teacher_sql, classroom_sql, course_sql, student_sql, student_classroom_sql, teacher_classroom_sql, conference_sql, pending_sql
+from sql import user_sql, teacher_sql, classroom_sql, course_sql, student_sql, conference_sql, pending_sql, token_type_sql
 from bot.student_inventory import back_to_student_menu
 
 
@@ -71,10 +71,20 @@ async def student_select_conference(update: Update, context: ContextTypes):
 
 async def student_new_title_proposal(update: Update, context: ContextTypes):
     # get necessary data
+    user = user_sql.get_user_by_chatid(update.effective_user.id)
+    student = student_sql.get_student(user.id)
+    conference_id = context.user_data["conference"]["id"]
+    conference = conference_sql.get_conference(conference_id)
+    classroom_id = student.active_classroom_id
+    token_type_id = token_type_sql.get_token_type_by_type("Propuesta de título").id
+    text = f'{user.fullname}: Propone el título "{update.message.text}" para la conferencia {conference.name}.' 
 
     # create pending in database
+    pending_sql.add_pending(student.id, classroom_id, token_type_id, text=text)
+    logger.info(f"New title proposal by {user.fullname} for conference {conference.name}.")
 
     # send notification to notification channel of the classroom if it exists
+    #TODO
 
     # notify student that the proposal was sent
     await update.message.reply_text(

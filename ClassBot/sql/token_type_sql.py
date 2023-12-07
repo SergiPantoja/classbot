@@ -11,7 +11,9 @@ def get_token_type(id: int) -> Token_type | None:
     
 def get_token_type_by_type(type: str) -> Token_type | None:
     """ Returns the first token_type object with the given type. None if not found.
-        In this case type is unique, so it should return only one object."""
+        In this case type is unique as long as is a default type, meaning course_id is None.
+        Is not related to a course. If it is related to a course, then type is not unique, 
+        but the combination of type and course_id is unique."""
     with session() as s:
         return s.query(Token_type).filter(Token_type.type == type).first()
 
