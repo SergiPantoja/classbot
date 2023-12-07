@@ -27,6 +27,8 @@ class Pending(Base):
     creation_date: Mapped[datetime.date] = mapped_column(DateTime(timezone=True))
     approved_date: Mapped[Optional[datetime.date]] = mapped_column(DateTime(timezone=True))
     approved_by: Mapped[Optional[int]] = mapped_column(ForeignKey('teacher.id', ondelete='SET NULL'))
+    text: Mapped[Optional[str]] = mapped_column()
+    FileID: Mapped[Optional[str]] = mapped_column(default=None)
 
     # many-to-one relationship with student
     student: Mapped["Student"] = relationship(back_populates="pendings")

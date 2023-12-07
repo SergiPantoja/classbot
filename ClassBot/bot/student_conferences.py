@@ -13,7 +13,7 @@ from telegram.ext import (
 from utils.logger import logger
 from bot.utils import states, keyboards
 from bot.utils.inline_keyboard_pagination import paginated_keyboard, paginator_handler
-from sql import user_sql, teacher_sql, classroom_sql, course_sql, student_sql, student_classroom_sql, teacher_classroom_sql, conference_sql
+from sql import user_sql, teacher_sql, classroom_sql, course_sql, student_sql, student_classroom_sql, teacher_classroom_sql, conference_sql, pending_sql
 from bot.student_inventory import back_to_student_menu
 
 
@@ -81,7 +81,7 @@ async def student_new_title_proposal(update: Update, context: ContextTypes):
         "Propuesta enviada.",
         reply_markup=ReplyKeyboardMarkup(keyboards.STUDENT_MAIN_MENU, one_time_keyboard=True, resize_keyboard=True)
     )
-    
+
     # sanitize context
     if "conference" in context.user_data:
         context.user_data.pop("conference")
