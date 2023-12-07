@@ -11,6 +11,7 @@ if TYPE_CHECKING:
     from models.teacher_classroom import Teacher_classroom
     from models.student_classroom import Student_classroom
     from models.conference import Conference
+    from models.guild import Guild
 
 class Classroom(Base):
     __tablename__ = 'classroom'
@@ -29,6 +30,8 @@ class Classroom(Base):
     students: Mapped[Optional[List["Student_classroom"]]] = relationship(back_populates="classroom", cascade="all, delete-orphan")
     # one-to-many relationship with conference
     conferences: Mapped[Optional[List["Conference"]]] = relationship(back_populates="classroom", cascade="all, delete-orphan")
-    
+    # one-to-many relationship with guild
+    guilds: Mapped[Optional[List["Guild"]]] = relationship(back_populates="classroom", cascade="all, delete-orphan")
+
     def __repr__(self) -> str:
         return f'Classroom(id={self.id}, course_id={self.course_id}, name={self.name}, teacher_auth={self.teacher_auth}, student_auth={self.student_auth})'
