@@ -2,6 +2,7 @@ import datetime
 from typing import TYPE_CHECKING, Optional, List
 
 from sqlalchemy import ForeignKey, DateTime
+from sqlalchemy.sql import func
 from sqlalchemy.orm import mapped_column, Mapped, relationship
 
 from models.base import Base
@@ -24,7 +25,9 @@ class Pending(Base):
     teacher_id: Mapped[Optional[int]] = mapped_column(ForeignKey('teacher.id', ondelete='SET NULL'))
     guild_id: Mapped[Optional[int]] = mapped_column(ForeignKey('guild.id'))
     status: Mapped[str] = mapped_column(default='pending') # pending, approved, rejected
-    creation_date: Mapped[datetime.date] = mapped_column(DateTime(timezone=True))
+    creation_date: Mapped[datetime.date] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+        )
     approved_date: Mapped[Optional[datetime.date]] = mapped_column(DateTime(timezone=True))
     approved_by: Mapped[Optional[int]] = mapped_column(ForeignKey('teacher.id', ondelete='SET NULL'))
     text: Mapped[Optional[str]] = mapped_column()
