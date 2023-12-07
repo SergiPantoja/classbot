@@ -67,6 +67,32 @@ async def teacher_pendings(update: Update, context: ContextTypes):
     
 
 
+
+
+async def teacher_pendings_back(update: Update, context: ContextTypes):
+    """Returns to the teacher menu"""
+    query = update.callback_query
+    query.answer()
+
+    teacher = teacher_sql.get_teacher(user_sql.get_user_by_chatid(update.effective_user.id).id)
+    # get active classroom from db
+    classroom = classroom_sql.get_classroom(teacher.active_classroom_id)
+    # get course name
+    course_name = course_sql.get_course(classroom.course_id).name
+
+    await query.message.reply_text(
+        f"Bienvenido profe {user_sql.get_user_by_chatid(update.effective_user.id).fullname}!\n\n"
+        f"Curso: {course_name}\n"
+        f"Aula: {classroom.name}\n"
+        f"Menu en construcción...",
+        reply_markup=ReplyKeyboardMarkup(keyboards.TEACHER_MAIN_MENU, one_time_keyboard=True, resize_keyboard=True),
+    )
+
+    if "paginator" in context.user_data:
+        context.user_data.pop("paginator")
+    return ConversationHandler.END
+
+
 # Handlers
 teacher_pendings_conv = ConversationHandler(
     entry_points=[MessageHandler(filters.Regex("^Pendientes$"), teacher_pendings)],
@@ -79,5 +105,8 @@ teacher_pendings_conv = ConversationHandler(
         ],
         
     },
-    fallbacks=[MessageHandler(filters.Regex("^Atrás$"), back_to_teacher_menu)],
+    fallbacks=[
+        CallbackQueryHandler(teacher_pendings_back, pattern=r"^back$"),
+        MessageHandler(filters.Regex("^Atrás$"), back_to_teacher_menu)
+        ],
 )
