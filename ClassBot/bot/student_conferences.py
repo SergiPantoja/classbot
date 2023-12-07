@@ -1,6 +1,6 @@
 import datetime
 
-from telegram import Update, ReplyKeyboardMarkup, ReplyKeyboardRemove, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram import Update, ReplyKeyboardMarkup, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.error import BadRequest
 from telegram.ext import (
     ContextTypes,
@@ -13,12 +13,27 @@ from telegram.ext import (
 from utils.logger import logger
 from bot.utils import states, keyboards
 from bot.utils.inline_keyboard_pagination import paginated_keyboard, paginator_handler
-from sql import user_sql, teacher_sql, classroom_sql, course_sql, student_sql, conference_sql, pending_sql, token_type_sql
+from sql import user_sql, classroom_sql, course_sql, student_sql, conference_sql, pending_sql, token_type_sql
 from bot.student_inventory import back_to_student_menu
 
 
 async def student_conferences(update: Update, context: ContextTypes):
     """ Sends a list of conferences belonging to the student current classrooms. """
+    # check user role
+    if "role" not in context.user_data:
+        await update.message.reply_text(
+            "La sesión ha expirado, por favor inicia sesión nuevamente",
+            reply_markup=ReplyKeyboardMarkup(
+                [["/start"]], resize_keyboard=True
+            )
+        )
+        return ConversationHandler.END
+    elif context.user_data["role"] != "student":
+        await update.message.reply_text(
+            "No tienes permiso para usar este comando.",
+        )
+        return ConversationHandler.END
+
     # get student
     student = student_sql.get_student(user_sql.get_user_by_chatid(update.effective_user.id).id)
     classroom_id = student.active_classroom_id
@@ -97,7 +112,6 @@ async def student_new_title_proposal(update: Update, context: ContextTypes):
         context.user_data.pop("conference")
     return ConversationHandler.END
     
-
 async def student_conference_back(update: Update, context: ContextTypes):
     """ Returns to student menu """
     query = update.callback_query

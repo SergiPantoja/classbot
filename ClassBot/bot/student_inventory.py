@@ -15,6 +15,21 @@ from sql import user_sql, student_sql, student_token_sql, token_sql, classroom_s
 
 async def student_inventory(update: Update, context: ContextTypes):
     """ Shows the student's inventory. """
+    # Check user role
+    if "role" not in context.user_data:
+        await update.message.reply_text(
+            "La sesión ha expirado, por favor inicia sesión nuevamente",
+            reply_markup=ReplyKeyboardMarkup(
+                [["/start"]], resize_keyboard=True
+            )
+        )
+        return ConversationHandler.END
+    elif context.user_data["role"] != "student":
+        await update.message.reply_text(
+            "No tienes permiso para acceder a este comando",
+        )
+        return ConversationHandler.END
+   
     # get total credits of the student in this course
     student = student_sql.get_student(user_sql.get_user_by_chatid(update.effective_chat.id).id)
     course_id = classroom_sql.get_classroom(student.active_classroom_id).course_id
@@ -55,6 +70,21 @@ async def back_to_student_menu(update: Update, context: ContextTypes):
 # Medals conversation
 async def show_medal_list(update: Update, context: ContextTypes):
     """ Shows a list of all the medals of this course this student has earned. """
+    # Check user role
+    if "role" not in context.user_data:
+        await update.message.reply_text(
+            "La sesión ha expirado, por favor inicia sesión nuevamente",
+            reply_markup=ReplyKeyboardMarkup(
+                [["/start"]], resize_keyboard=True
+            )
+        )
+        return ConversationHandler.END
+    elif context.user_data["role"] != "student":
+        await update.message.reply_text(
+            "No tienes permiso para acceder a este comando",
+        )
+        return ConversationHandler.END
+    
     # get student
     student = student_sql.get_student(user_sql.get_user_by_chatid(update.effective_chat.id).id)
     # get course

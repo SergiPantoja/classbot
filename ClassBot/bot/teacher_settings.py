@@ -48,6 +48,8 @@ async def back_to_teacher_menu(update: Update, context: ContextTypes):
         context.user_data.pop("edit_classroom")
     if "conference" in context.user_data:
         context.user_data.pop("conference")
+    if "pending" in context.user_data:
+        context.user_data.pop("pending")
 
     return ConversationHandler.END
 

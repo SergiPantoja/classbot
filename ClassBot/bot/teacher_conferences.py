@@ -19,13 +19,28 @@ from bot.teacher_settings import back_to_teacher_menu
 
 async def teacher_conferences(update: Update, context: ContextTypes):
     """Shows conferences of the classroom if any, else prompts user to create one"""
+    # check user role
+    if "role" not in context.user_data:
+        await update.message.reply_text(
+            "La sesión ha expirado, por favor inicia sesión nuevamente",
+            reply_markup=ReplyKeyboardMarkup(
+                [["/start"]], resize_keyboard=True
+            )
+        )
+        return ConversationHandler.END
+    elif context.user_data["role"] != "teacher":
+        await update.message.reply_text(
+            "No tienes permiso para acceder a este comando",
+        )
+        return ConversationHandler.END
+
     teacher = teacher_sql.get_teacher(user_sql.get_user_by_chatid(update.effective_user.id).id)
     classroom_id = teacher.active_classroom_id
     conferences = conference_sql.get_conferences_by_classroom(classroom_id)
     if conferences:
         # Show all conferences with pagination, selecting a conference will allow
         # the user to edit or delete it, also create a new conference button.
-        buttons = [InlineKeyboardButton(f"{i}. {conference.name} {datetime.date(conference.date.year, conference.date.month, conference.date.day)}", callback_data=f"conference#{conference.id}") for i, conference in enumerate(conferences, start=1)]
+        buttons = [InlineKeyboardButton(f"{i}. {conference.name} - {datetime.date(conference.date.year, conference.date.month, conference.date.day)}", callback_data=f"conference#{conference.id}") for i, conference in enumerate(conferences, start=1)]
         other_buttons = [InlineKeyboardButton("Crear conferencia", callback_data="conference_create")]
         await update.message.reply_text(
             "Conferencias del aula",
