@@ -10,6 +10,7 @@ if TYPE_CHECKING:
     from models.user import User # avoid circular import
     from models.student_classroom import Student_classroom
     from models.student_token import Student_token
+    from models.pending import Pending
 
 # specialization of User table
 class Student(Base):
@@ -25,6 +26,8 @@ class Student(Base):
     classrooms: Mapped[Optional[List["Student_classroom"]]] = relationship(back_populates="student", cascade='all, delete-orphan')
     # Many-to-many relationship with token
     tokens: Mapped[Optional[List["Student_token"]]] = relationship(back_populates="student", cascade='all, delete-orphan')
+    # One-to-many relationship with pending
+    pendings: Mapped[Optional[List["Pending"]]] = relationship(back_populates="student", cascade='all, delete-orphan')
 
     def __repr__(self) -> str:
         return f'Student(id={self.id})'

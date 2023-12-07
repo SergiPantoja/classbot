@@ -12,6 +12,7 @@ if TYPE_CHECKING:
     from models.teacher_classroom import Teacher_classroom
     from models.token import Token
     from models.student_token import Student_token
+    from models.pending import Pending
 
 # specialization of User table
 class Teacher(Base):
@@ -33,6 +34,9 @@ class Teacher(Base):
     # Relationship tokens_given: One-to-many relationship with token (dont need 
     # to delete tokens when teacher is deleted)
     tokens_given: Mapped[Optional[List["Student_token"]]] = relationship(back_populates="given_by")
+    # One-to-many relationship with pending
+    direct_pendings: Mapped[Optional[List["Pending"]]] = relationship(back_populates="direct_pending_teacher", foreign_keys='Pending.teacher_id')
+    approved_pendings: Mapped[Optional[List["Pending"]]] = relationship(back_populates="approved_by_teacher", foreign_keys='Pending.approved_by')
     
     def __repr__(self) -> str:
         return f'Teacher(id={self.id})'
