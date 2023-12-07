@@ -77,16 +77,16 @@ async def student_new_title_proposal(update: Update, context: ContextTypes):
     # send notification to notification channel of the classroom if it exists
 
     # notify student that the proposal was sent
-
     await update.message.reply_text(
         "Propuesta enviada.",
         reply_markup=ReplyKeyboardMarkup(keyboards.STUDENT_MAIN_MENU, one_time_keyboard=True, resize_keyboard=True)
     )
+    
     # sanitize context
     if "conference" in context.user_data:
         context.user_data.pop("conference")
     return ConversationHandler.END
-
+    
 
 async def student_conference_back(update: Update, context: ContextTypes):
     """ Returns to student menu """
