@@ -28,6 +28,8 @@ def create_default_token_types(session):
             s.add(Token_type(type="Medalla", hidden=True))
         if not s.query(Token_type).filter(Token_type.type == "Miscelaneo").first():
             s.add(Token_type(type="Miscelaneo", hidden=True))
+        if not s.query(Token_type).filter(Token_type.type == "Propuesta de título").first():
+            s.add(Token_type(type="Propuesta de título", hidden=True)) 
         s.commit()
         
 

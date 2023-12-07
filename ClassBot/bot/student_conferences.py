@@ -43,9 +43,19 @@ async def student_select_conference(update: Update, context: ContextTypes):
     query = update.callback_query
     query.answer()
 
+    if query.data == "new_title_proposal":
+        await query.edit_message_text(
+            "Ingrese el nuevo título:",
+            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Atrás", callback_data="back")]])
+        )
+        return states.S_NEW_TITLE_PROPOSAL
+    
     # get conference
     conference_id = int(query.data.split("#")[1])
     conference = conference_sql.get_conference(conference_id)
+    # save conference id in context
+    context.user_data["conference"] = {"id": conference_id}
+    
     # Show conference details
     if conference.fileID:
         try:
@@ -59,6 +69,25 @@ async def student_select_conference(update: Update, context: ContextTypes):
         )
     return states.S_SELECT_CONFERENCE
 
+async def student_new_title_proposal(update: Update, context: ContextTypes):
+    # get necessary data
+
+    # create pending in database
+
+    # send notification to notification channel of the classroom if it exists
+
+    # notify student that the proposal was sent
+
+    await update.message.reply_text(
+        "Propuesta enviada.",
+        reply_markup=ReplyKeyboardMarkup(keyboards.STUDENT_MAIN_MENU, one_time_keyboard=True, resize_keyboard=True)
+    )
+    # sanitize context
+    if "conference" in context.user_data:
+        context.user_data.pop("conference")
+    return ConversationHandler.END
+
+
 async def student_conference_back(update: Update, context: ContextTypes):
     """ Returns to student menu """
     query = update.callback_query
@@ -69,9 +98,14 @@ async def student_conference_back(update: Update, context: ContextTypes):
     course_name = course_sql.get_course(classroom.course_id).name
 
     await query.message.reply_text(
-        f"Menú principal > {course_name} > {classroom.name}",
+        f"Menú principal.\n"
+        f"Curso: {course_name}.\n" 
+        f"Aula: {classroom.name}.\n",
         reply_markup=ReplyKeyboardMarkup(keyboards.STUDENT_MAIN_MENU, one_time_keyboard=True, resize_keyboard=True),
     )
+    # sanitize context
+    if "conference" in context.user_data:
+        context.user_data.pop("conference")
     return ConversationHandler.END
 
 
@@ -80,9 +114,10 @@ student_conferences_conv = ConversationHandler(
     entry_points=[MessageHandler(filters.Regex("^Conferencias$"), student_conferences)],
     states={
         states.S_SELECT_CONFERENCE: [
-            CallbackQueryHandler(student_select_conference, pattern="^conference#"),
+            CallbackQueryHandler(student_select_conference, pattern="^(conference#|new_title_proposal)"),
             paginator_handler,
-        ]
+        ],
+        states.S_NEW_TITLE_PROPOSAL: [MessageHandler(filters.TEXT & ~filters.COMMAND, student_new_title_proposal)]
     },
     fallbacks=[
         CallbackQueryHandler(student_conference_back, pattern="^back$"),

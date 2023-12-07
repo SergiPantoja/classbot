@@ -68,6 +68,7 @@ STUDENT_MAIN_MENU = [["Conferencias", "Inventario"], ["Opciones", "..."]]
 STUDENT_INVENTORY = [["Medallas", "Atrás"]]
 STUDENT_CONFERENCE_SELECTED = [
     [
+        InlineKeyboardButton("Proponer nuevo título", callback_data="new_title_proposal"),
         InlineKeyboardButton("Atrás", callback_data="back"),
     ],
 ]
