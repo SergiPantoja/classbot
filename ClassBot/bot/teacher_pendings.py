@@ -52,7 +52,7 @@ async def teacher_pendings(update: Update, context: ContextTypes):
         # create a list of lines for each pending
         lines = [f"{i}. {token_type_sql.get_token_type(pending.token_type_id).type}: {user_sql.get_user(pending.student_id).fullname} Fecha: {datetime.date(pending.creation_date.year, pending.creation_date.month, pending.creation_date.day)} -> /pending_{pending.id} {'(Esperando más información)' if pending.more_info == 'PENDING' else ''}{'(Nueva información recibida)' if pending.more_info == 'SENT' else ''}" for i, pending in enumerate(pendings, start=1)]
         # create new paginator using this lines
-        other_buttons = [InlineKeyboardButton("Mis pendientes", callback_data="direct_pendings"), InlineKeyboardButton("Filtrar", callback_data="filter_pendings")]
+        other_buttons = [InlineKeyboardButton("Mis pendientes", callback_data="direct_pendings"), InlineKeyboardButton("Filtrar", callback_data="filter_pendings"), InlineKeyboardButton("Historial", callback_data="history_pendings")]
         paginator = Paginator(lines, items_per_page=10, text_before="Pendientes del aula:", add_back=True, other_buttons=other_buttons)
         # save paginator in user_data
         context.user_data["paginator"] = paginator
@@ -77,7 +77,7 @@ async def teacher_pendings(update: Update, context: ContextTypes):
             # create a list of lines for each pending
             lines = [f"{i}. {token_type_sql.get_token_type(pending.token_type_id).type}: {user_sql.get_user(pending.student_id).fullname} Fecha: {datetime.date(pending.creation_date.year, pending.creation_date.month, pending.creation_date.day)} -> /pending_{pending.id} {'(Esperando más información)' if pending.more_info == 'PENDING' else ''}{'(Nueva información recibida)' if pending.more_info == 'SENT' else ''}" for i, pending in enumerate(direct_pendings, start=1)]
             # create new paginator using this lines
-            other_buttons = [InlineKeyboardButton("Todos los pendientes", callback_data="all_pendings"), InlineKeyboardButton("Filtrar", callback_data="filter_pendings")]
+            other_buttons = [InlineKeyboardButton("Todos los pendientes", callback_data="all_pendings"), InlineKeyboardButton("Filtrar", callback_data="filter_pendings"), InlineKeyboardButton("Historial", callback_data="history_pendings")]
             paginator = Paginator(lines, items_per_page=10, text_before="Aquí están tus pendientes directos, no hay más pendientes en el aula:", add_back=True, other_buttons=other_buttons)
             # save paginator in user_data
             context.user_data["paginator"] = paginator
@@ -120,7 +120,7 @@ async def teacher_direct_pendings(update: Update, context: ContextTypes):
         # create a list of lines for each pending
         lines = [f"{i}. {token_type_sql.get_token_type(pending.token_type_id).type}: {user_sql.get_user(pending.student_id).fullname} Fecha: {datetime.date(pending.creation_date.year, pending.creation_date.month, pending.creation_date.day)} -> /pending_{pending.id} {'(Esperando más información)' if pending.more_info == 'PENDING' else ''}{'(Nueva información recibida)' if pending.more_info == 'SENT' else ''}" for i, pending in enumerate(pendings, start=1)]
         # create new paginator using this lines
-        other_buttons = [InlineKeyboardButton("Todos los pendientes", callback_data="all_pendings"), InlineKeyboardButton("Filtrar", callback_data="filter_pendings")]
+        other_buttons = [InlineKeyboardButton("Todos los pendientes", callback_data="all_pendings"), InlineKeyboardButton("Filtrar", callback_data="filter_pendings"), InlineKeyboardButton("Historial", callback_data="history_pendings")]
         paginator = Paginator(lines, items_per_page=10, text_before="Mis pendientes directos:", add_back=True, other_buttons=other_buttons)
         # save paginator in user_data
         context.user_data["paginator"] = paginator
@@ -137,6 +137,35 @@ async def teacher_direct_pendings(update: Update, context: ContextTypes):
             reply_markup=ReplyKeyboardMarkup(keyboards.TEACHER_MAIN_MENU, one_time_keyboard=True, resize_keyboard=True),
         )
         return ConversationHandler.END
+
+async def pending_history(update: Update, context: ContextTypes):
+    """ Shows the history of previously approved pendings of the current classroom by the current teacher."""
+    query = update.callback_query
+    query.answer()
+
+    teacher = teacher_sql.get_teacher(user_sql.get_user_by_chatid(update.effective_user.id).id)
+    classroom_id = teacher.active_classroom_id
+    # get the list of pendings of this classroom that are "APPROVED" by this teacher
+    pendings = pending_sql.get_approved_pendings_of_teacher(teacher.id, classroom_id)
+    if pendings:
+        lines = [f"{i}. {token_type_sql.get_token_type(pending.token_type_id).type}: {user_sql.get_user(pending.student_id).fullname} Aprobado el {datetime.date(pending.approved_date.year, pending.approved_date.month, pending.approved_date.day)} con un valor de {token_sql.get_token_by_pending(pending.id).value}" for i, pending in enumerate(pendings, start=1)]
+        # create new paginator using this lines
+        paginator = Paginator(lines, items_per_page=10, text_before="Historial de pendientes que has aprobado:", add_back=True)
+        # save paginator in user_data
+        context.user_data["paginator"] = paginator
+        # send first page
+        await query.edit_message_text(
+            paginator.text(),
+            reply_markup=paginator.keyboard()
+        )
+        return states.T_PENDING_SELECT
+    else:
+        await query.message.reply_text(
+            "No has aprobado ningún pendiente en esta aula.",
+            reply_markup=ReplyKeyboardMarkup(keyboards.TEACHER_MAIN_MENU, one_time_keyboard=True, resize_keyboard=True),
+        )
+        return ConversationHandler.END
+
 
 async def pending_info(update: Update, context: ContextTypes):
     """ Shows information of the selected pending.
@@ -391,7 +420,6 @@ async def approve_pending(update: Update, context: ContextTypes):
         return ConversationHandler.END
 
 
-
 async def teacher_pendings_back(update: Update, context: ContextTypes):
     """Returns to the teacher menu"""
     query = update.callback_query
@@ -427,6 +455,7 @@ teacher_pendings_conv = ConversationHandler(
             CallbackQueryHandler(teacher_direct_pendings, pattern=r"^direct_pendings$"),
             CallbackQueryHandler(teacher_pendings, pattern=r"^all_pendings$"),
             #CallbackQueryHandler(teacher_pendings, pattern=r"^filter_pendings$"),
+            CallbackQueryHandler(pending_history, pattern=r"^history_pendings$"),
             MessageHandler(filters.TEXT & filters.Regex("^/pending_"), pending_info),
         ],
         states.T_PENDING_OPTIONS: [CallbackQueryHandler(manage_pending, pattern=r"^pending_")],
