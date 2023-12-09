@@ -143,12 +143,18 @@ async def pending_history(update: Update, context: ContextTypes):
     query = update.callback_query
     query.answer()
 
+    # save in context teacher is viewing history
+    if not "pending" in context.user_data:
+        context.user_data["pending"] = {"history": True}
+    else:
+        context.user_data["pending"]["history"] = True
+
     teacher = teacher_sql.get_teacher(user_sql.get_user_by_chatid(update.effective_user.id).id)
     classroom_id = teacher.active_classroom_id
     # get the list of pendings of this classroom that are "APPROVED" by this teacher
     pendings = pending_sql.get_approved_pendings_of_teacher(teacher.id, classroom_id)
     if pendings:
-        lines = [f"{i}. {token_type_sql.get_token_type(pending.token_type_id).type}: {user_sql.get_user(pending.student_id).fullname} Aprobado el {datetime.date(pending.approved_date.year, pending.approved_date.month, pending.approved_date.day)} con un valor de {token_sql.get_token_by_pending(pending.id).value}" for i, pending in enumerate(pendings, start=1)]
+        lines = [f"{i}. {token_type_sql.get_token_type(pending.token_type_id).type}: {user_sql.get_user(pending.student_id).fullname} Aprobado el {datetime.date(pending.approved_date.year, pending.approved_date.month, pending.approved_date.day)} con un valor de {token_sql.get_token_by_pending(pending.id).value} -> /pending_{pending.id}" for i, pending in enumerate(pendings, start=1)]
         # create new paginator using this lines
         paginator = Paginator(lines, items_per_page=10, text_before="Historial de pendientes que has aprobado:", add_back=True)
         # save paginator in user_data
@@ -223,10 +229,18 @@ async def pending_info(update: Update, context: ContextTypes):
                 "se guardan en la nube de Telegram. Puede pedirle al usuario que"
                 "lo vuelva a enviar."
             )
-    await update.message.reply_text(
-        text=text,
-        reply_markup=InlineKeyboardMarkup(keyboards.TEACHER_PENDING_OPTIONS),
-    )
+    if "history" in context.user_data["pending"]:
+        # if viewing history, only show options to return to history or back to menu
+        await update.message.reply_text(
+            text=text,
+            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Historial", callback_data="history_pendings")],[InlineKeyboardButton("Atrás", callback_data="back")]]),
+        )
+    else:
+        # if not viewing history, show options to approve, reject or assign
+        await update.message.reply_text(
+            text=text,
+            reply_markup=InlineKeyboardMarkup(keyboards.TEACHER_PENDING_OPTIONS),
+        )
     return states.T_PENDING_OPTIONS
 
 async def manage_pending(update: Update, context: ContextTypes):
@@ -458,7 +472,10 @@ teacher_pendings_conv = ConversationHandler(
             CallbackQueryHandler(pending_history, pattern=r"^history_pendings$"),
             MessageHandler(filters.TEXT & filters.Regex("^/pending_"), pending_info),
         ],
-        states.T_PENDING_OPTIONS: [CallbackQueryHandler(manage_pending, pattern=r"^pending_")],
+        states.T_PENDING_OPTIONS: [
+            CallbackQueryHandler(manage_pending, pattern=r"^pending_"),
+            CallbackQueryHandler(pending_history, pattern=r"^history_pendings$"),
+            ],
         states.T_PENDING_ASSIGN_TEACHER: [
             CallbackQueryHandler(assign_pending, pattern=r"^assign#"),
             paginator_handler,
