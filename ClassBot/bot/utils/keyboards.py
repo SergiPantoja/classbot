@@ -66,7 +66,7 @@ TEACHER_CONFERENCE_EDIT = [
 TEACHER_PENDING_OPTIONS = [
     [
         InlineKeyboardButton("Aprobar", callback_data="pending_approve"),
-        InlineKeyboardButton("Rechazar", callback_data="pending_reject"),
+        InlineKeyboardButton("Denegar", callback_data="pending_reject"),
     ],
     [
         InlineKeyboardButton("Asignar a otro profesor", callback_data="pending_assign"),

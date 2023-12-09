@@ -14,6 +14,11 @@ def get_token_by_name(name: str) -> Token | None:
     with session() as s:
         return s.query(Token).filter(Token.name == name).first()
 
+def get_token_by_pending(pending_id: int) -> Token | None:
+    """ Returns the first token object with the given pending_id. None if not found."""
+    with session() as s:
+        return s.query(Token).filter(Token.pending_id == pending_id).first()
+
 
 def add_token(
         name: str, 

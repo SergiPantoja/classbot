@@ -15,10 +15,10 @@ def get_token_ids(student_id: int) -> list[int]:
     with session() as s:
         return [student_token.token_id for student_token in s.query(Student_token).filter(Student_token.student_id == student_id).all()]
 
-def add_student_token(student_id: int, token_id: int) -> None:
+def add_student_token(student_id: int, token_id: int, teacher_id: int = None) -> None:
     """ Adds a new student_token to the database. """
     with session() as s:
-        s.add(Student_token(student_id=student_id, token_id=token_id))
+        s.add(Student_token(student_id=student_id, token_id=token_id, teacher_id=teacher_id))
         s.commit()
 
 def exists(student_id: int, token_id: int) -> bool:

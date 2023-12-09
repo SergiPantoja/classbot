@@ -15,7 +15,7 @@ from utils.logger import logger
 from bot.utils import states, keyboards
 from bot.utils.inline_keyboard_pagination import paginated_keyboard, paginator_handler
 from bot.utils.pagination import Paginator, text_paginator_handler
-from sql import user_sql, teacher_sql, classroom_sql, course_sql, conference_sql, pending_sql, token_type_sql, student_sql, teacher_classroom_sql
+from sql import user_sql, teacher_sql, classroom_sql, course_sql, conference_sql, pending_sql, token_type_sql, student_sql, teacher_classroom_sql, token_sql, student_token_sql
 from bot.teacher_settings import back_to_teacher_menu
 
 
@@ -211,7 +211,21 @@ async def manage_pending(update: Update, context: ContextTypes):
     teacher = teacher_sql.get_teacher(user_sql.get_user_by_chatid(update.effective_user.id).id)
 
     if query.data == "pending_approve":
-        return ConversationHandler.END
+        # If there is a token created for this pending, ask only for confirmation and a comment
+        # else, ask for value, comment and create token
+        token = token_sql.get_token_by_pending(pending_id)
+        if token:
+            await query.edit_message_text(
+                f"Puede enviar un comentario si lo desea. Presione confirmar para aprobar el pendiente.",
+                reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Confirmar", callback_data="pending_approve_confirm")], [InlineKeyboardButton("Atrás", callback_data="back")]]),
+            )
+            return states.T_PENDING_APPROVE
+        else:
+            await query.edit_message_text(
+                f"Ingrese la cantidad de créditos a otorgar por el {pending_type} de {user_sql.get_user(pending.student_id).fullname}. Puede agregar un comentario después de la cantidad de créditos después de un espacio.",
+                reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Atrás", callback_data="back")]]),
+            )
+            return states.T_PENDING_APPROVE
     
     elif query.data == "pending_reject":
         # asks the teacher for an explanation (optional, reason for rejection)
@@ -273,7 +287,7 @@ async def reject_pending(update: Update, context: ContextTypes):
         pending_sql.reject_pending(pending_id)
         logger.info(f"Pending {pending_id} rejected")
         await query.message.reply_text(
-            text="El pendiente ha sido rechazado.",
+            text="El pendiente ha sido denegado.",
             reply_markup=ReplyKeyboardMarkup(keyboards.TEACHER_MAIN_MENU, one_time_keyboard=True, resize_keyboard=True),
         )
     else:
@@ -281,7 +295,7 @@ async def reject_pending(update: Update, context: ContextTypes):
         pending_sql.reject_pending(pending_id, explanation)
         logger.info(f"Pending {pending_id} rejected")
         await update.message.reply_text(
-            text="El pendiente ha sido rechazado.",
+            text="El pendiente ha sido denegado. ",
             reply_markup=ReplyKeyboardMarkup(keyboards.TEACHER_MAIN_MENU, one_time_keyboard=True, resize_keyboard=True),
         )
     # notify student
@@ -290,9 +304,9 @@ async def reject_pending(update: Update, context: ContextTypes):
     student_name = user_sql.get_user(pending.student_id).fullname
     token_type = token_type_sql.get_token_type(pending.token_type_id).type
     pending_text = pending.text if pending.text else ""
-    text = f"El profesor {user_sql.get_user_by_chatid(update.effective_user.id).fullname} ha rechazado tu {token_type}.\n\nTu {token_type}:\n{pending_text}"
+    text = f"El profesor {user_sql.get_user_by_chatid(update.effective_user.id).fullname} ha denegado tu {token_type}.\n\nTu {token_type}:\n{pending_text}"
     if pending.explanation:
-        text += f"\n\nRazón del rechazo:\n{pending.explanation}"
+        text += f"\n\nRazón:\n{pending.explanation}"
     try:
         await context.bot.send_message(
             chat_id=student_chat_id,
@@ -301,6 +315,80 @@ async def reject_pending(update: Update, context: ContextTypes):
     except BadRequest:
         logger.error(f"Error sending message to student {student_name} (chat_id: {student_chat_id})")
     return ConversationHandler.END
+
+async def approve_pending(update: Update, context: ContextTypes):
+    """ Sets pending status to approved, creates the token and notifies the student."""
+    query = update.callback_query
+    if query:
+        query.answer()
+
+    pending_id = context.user_data["pending"]["id"]
+    pending = pending_sql.get_pending(pending_id)
+    student_chat_id = user_sql.get_user(pending.student_id).telegram_chatid
+    student_name = user_sql.get_user(pending.student_id).fullname
+    token_type = token_type_sql.get_token_type(pending.token_type_id).type
+    course_id = classroom_sql.get_classroom(pending.classroom_id).course_id
+
+    if query:
+        # token already exists and no comment provided
+        token = token_sql.get_token_by_pending(pending_id)
+        if token:
+            # assign token to student
+            student_token_sql.add_student_token(student_id=pending.student_id, token_id=token.id)
+            logger.info(f"Token {token.id} assigned to student {pending.student_id}")  
+            # change pending status to approved
+            pending_sql.approve_pending(pending_id, user_sql.get_user_by_chatid(update.effective_user.id).id)
+            logger.info(f"Pending {pending_id} approved") 
+            # notify student
+            text = f"El profesor {user_sql.get_user_by_chatid(update.effective_user.id).fullname} ha aprobado tu {token_type}.\n\nTu {token_type}:\n{pending.text}"
+            try:
+                await context.bot.send_message(
+                    chat_id=student_chat_id,
+                    text=text,
+                )
+            except BadRequest:
+                logger.error(f"Error sending message to student {student_name} (chat_id: {student_chat_id})")
+            await query.message.reply_text(
+                text="El pendiente ha sido aprobado.",
+                reply_markup=ReplyKeyboardMarkup(keyboards.TEACHER_MAIN_MENU, one_time_keyboard=True, resize_keyboard=True),
+            )
+            return ConversationHandler.END
+    else:
+        text = update.message.text
+        # get token value and comment
+        try:
+            value = int(text.split(" ")[0])
+            comment = text.split(" ", 1)[1]
+        except:
+            value = int(text)
+            comment = None
+        # create token
+        token_sql.add_token(name=f"{token_type} de {student_name}", value=value, token_type_id=pending.token_type_id, course_id=course_id, pending_id=pending_id)
+        logger.info(f"Token {token_type} created for student {student_name} with value {value}")
+        # get token id
+        token = token_sql.get_token_by_pending(pending_id) # should be only one
+        # assign token to student
+        student_token_sql.add_student_token(student_id=pending.student_id, token_id=token.id)
+        logger.info(f"Token {token.id} assigned to student {pending.student_id}")
+        # change pending status to approved
+        pending_sql.approve_pending(pending_id, user_sql.get_user_by_chatid(update.effective_user.id).id)
+        logger.info(f"Pending {pending_id} approved")
+        # notify student
+        text = f"El profesor {user_sql.get_user_by_chatid(update.effective_user.id).fullname} ha aprobado tu {token_type}.\n\nTu {token_type}:\n{pending.text}"
+        if comment:
+            text += f"\n\nComentario:\n{comment}"
+        try:
+            await context.bot.send_message(
+                chat_id=student_chat_id,
+                text=text,
+            )
+        except BadRequest:
+            logger.error(f"Error sending message to student {student_name} (chat_id: {student_chat_id})")
+        await update.message.reply_text(
+            text="El pendiente ha sido aprobado.",
+            reply_markup=ReplyKeyboardMarkup(keyboards.TEACHER_MAIN_MENU, one_time_keyboard=True, resize_keyboard=True),
+        )
+        return ConversationHandler.END
 
 
 
@@ -349,7 +437,11 @@ teacher_pendings_conv = ConversationHandler(
         states.T_PENDING_REJECT: [
             CallbackQueryHandler(reject_pending, pattern=r"^pending_reject_continue$"),
             MessageHandler(filters.TEXT & ~filters.COMMAND, reject_pending),
-        ]
+        ],
+        states.T_PENDING_APPROVE: [
+            CallbackQueryHandler(approve_pending, pattern=r"^pending_approve_confirm$"),
+            MessageHandler(filters.TEXT & ~filters.COMMAND, approve_pending),
+        ],
         
     },
     fallbacks=[
