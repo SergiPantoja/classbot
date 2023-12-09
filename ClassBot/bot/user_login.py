@@ -380,17 +380,17 @@ async def new_classroom(update: Update, context: ContextTypes.DEFAULT_TYPE):
         logger.info("Teacher %s logged in to classroom %s.\n\n", update.message.from_user.first_name, classroom_name)
         
         # to try it, this will be set up by the teacher later
-        try:
+        #try:
             # create token of type Medalla for this classroom
-            token_type_id = token_type_sql.get_token_type_by_type("Medalla").id
-            name = f"{classroom_id}_Medalla de bienvenida"
-            value = 10000
-            image_path = "path:./assets/placeholders/medalla_de_bienvenida.png"
-            token_sql.add_token(name, value, token_type_id, course_id, automatic=True, image_url=image_path)
-            logger.info("New token added to db.\n\n")
-        except Exception as e:
-            logger.error("Error creating token: %s\n\n", e)
-            raise e
+        #    token_type_id = token_type_sql.get_token_type_by_type("Medalla").id
+        #    name = f"{classroom_id}_Medalla de bienvenida"
+        #    value = 10000
+        #    image_path = "path:./assets/placeholders/medalla_de_bienvenida.png"
+        #    token_sql.add_token(name, value, token_type_id, course_id, automatic=True, image_url=image_path)
+        #    logger.info("New token added to db.\n\n")
+        #except Exception as e:
+        #    logger.error("Error creating token: %s\n\n", e)
+        #    raise e
 
 
         # add user role to context
