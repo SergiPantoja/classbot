@@ -63,6 +63,17 @@ TEACHER_CONFERENCE_EDIT = [
     ],
     [InlineKeyboardButton("Atrás", callback_data="conference_back")],
 ]
+TEACHER_PENDING_OPTIONS = [
+    [
+        InlineKeyboardButton("Aprobar", callback_data="pending_approve"),
+        InlineKeyboardButton("Rechazar", callback_data="pending_reject"),
+    ],
+    [
+        InlineKeyboardButton("Asignar a otro profesor", callback_data="pending_assign"),
+        InlineKeyboardButton("Pedir más información", callback_data="pending_ask_info"),
+    ],
+    [InlineKeyboardButton("Atrás", callback_data="back")],
+]
 
 STUDENT_MAIN_MENU = [["Conferencias", "Inventario"], ["Opciones", "..."]]
 STUDENT_INVENTORY = [["Medallas", "Atrás"]]

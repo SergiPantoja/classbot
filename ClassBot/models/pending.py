@@ -24,7 +24,7 @@ class Pending(Base):
     token_type_id: Mapped[int] = mapped_column(ForeignKey('token_type.id'))
     teacher_id: Mapped[Optional[int]] = mapped_column(ForeignKey('teacher.id', ondelete='SET NULL'))
     guild_id: Mapped[Optional[int]] = mapped_column(ForeignKey('guild.id'))
-    status: Mapped[str] = mapped_column(default='pending') # pending, approved, rejected
+    status: Mapped[str] = mapped_column(default='pending') # PENDING, APPROVED, REJECTED
     creation_date: Mapped[datetime.date] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
         )
@@ -32,6 +32,9 @@ class Pending(Base):
     approved_by: Mapped[Optional[int]] = mapped_column(ForeignKey('teacher.id', ondelete='SET NULL'))
     text: Mapped[Optional[str]] = mapped_column()
     FileID: Mapped[Optional[str]] = mapped_column(default=None)
+    explanation: Mapped[Optional[str]] = mapped_column(default=None)    # explanation for rejection
+    # if teacher asks for more info, None if not. Values: "PENDING", "SENT". Info is stored in the text column.
+    more_info: Mapped[Optional[str]] = mapped_column(default=None) 
 
     # many-to-one relationship with student
     student: Mapped["Student"] = relationship(back_populates="pendings")

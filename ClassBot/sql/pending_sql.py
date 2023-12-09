@@ -112,3 +112,9 @@ def reject_pending(pending_id: int) -> None:
     with session() as s:
         s.query(Pending).filter(Pending.id == pending_id).update({"status": "REJECTED"})    # maybe add a reason? (text) also date and teacher
         s.commit()
+
+def assign_pending(pending_id: int, teacher_id: int) -> None:
+    """ Assigns the pending to the given teacher. """
+    with session() as s:
+        s.query(Pending).filter(Pending.id == pending_id).update({"teacher_id": teacher_id})
+        s.commit()
