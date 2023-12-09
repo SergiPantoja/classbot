@@ -61,8 +61,8 @@ async def back_to_student_menu(update: Update, context: ContextTypes):
         ),
     )
     
-    # sanitize context
-    # ...
+    if "pending_answer" in context.user_data:
+        context.user_data.pop("pending_answer")
 
     return ConversationHandler.END
 

@@ -118,3 +118,32 @@ def assign_pending(pending_id: int, teacher_id: int) -> None:
     with session() as s:
         s.query(Pending).filter(Pending.id == pending_id).update({"teacher_id": teacher_id})
         s.commit()
+
+def ask_for_more_info(pending_id: int, info: str) -> None:
+    """ Asks for more info to the student. """
+    with session() as s:
+        # get the current text
+        pending = s.query(Pending).filter(Pending.id == pending_id).first()
+        current_text = pending.text
+        if current_text:
+            current_text += "\n\n" + info
+        else:
+            current_text = info
+        s.query(Pending).filter(Pending.id == pending_id).update({"more_info": "PENDING", "text": current_text})
+        s.commit()
+
+def send_more_info(pending_id: int, info: str, FileID: str = None) -> None:
+    """ Sends more info to the teacher. """
+    with session() as s:
+        # get the current text
+        pending = s.query(Pending).filter(Pending.id == pending_id).first()
+        current_text = pending.text
+        if current_text:
+            current_text += "\n\n" + info
+        else:
+            current_text = info
+        current_file = pending.FileID
+        if current_file and FileID == None:
+            FileID = current_file   # To avoid deleting the file
+        s.query(Pending).filter(Pending.id == pending_id).update({"more_info": "SENT", "text": current_text, "FileID": FileID})
+        s.commit()

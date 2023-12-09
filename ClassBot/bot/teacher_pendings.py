@@ -1,13 +1,12 @@
 import datetime
 
-from telegram import Update, ReplyKeyboardMarkup, ReplyKeyboardRemove, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram import Update, ReplyKeyboardMarkup, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.error import BadRequest
 from telegram.ext import (
     ContextTypes,
     ConversationHandler,
     MessageHandler,
     CallbackQueryHandler,
-    CommandHandler,
     filters,
 )
 
@@ -15,7 +14,7 @@ from utils.logger import logger
 from bot.utils import states, keyboards
 from bot.utils.inline_keyboard_pagination import paginated_keyboard, paginator_handler
 from bot.utils.pagination import Paginator, text_paginator_handler
-from sql import user_sql, teacher_sql, classroom_sql, course_sql, conference_sql, pending_sql, token_type_sql, student_sql, teacher_classroom_sql, token_sql, student_token_sql
+from sql import user_sql, teacher_sql, classroom_sql, course_sql, pending_sql, token_type_sql, teacher_classroom_sql, token_sql, student_token_sql
 from bot.teacher_settings import back_to_teacher_menu
 
 
@@ -77,7 +76,7 @@ async def teacher_pendings(update: Update, context: ContextTypes):
             # create a list of lines for each pending
             lines = [f"{i}. {token_type_sql.get_token_type(pending.token_type_id).type}: {user_sql.get_user(pending.student_id).fullname} Fecha: {datetime.date(pending.creation_date.year, pending.creation_date.month, pending.creation_date.day)} -> /pending_{pending.id} {'(Esperando más información)' if pending.more_info == 'PENDING' else ''}{'(Nueva información recibida)' if pending.more_info == 'SENT' else ''}" for i, pending in enumerate(direct_pendings, start=1)]
             # create new paginator using this lines
-            other_buttons = [InlineKeyboardButton("Todos los pendientes", callback_data="all_pendings"), InlineKeyboardButton("Filtrar", callback_data="filter_pendings"), InlineKeyboardButton("Historial", callback_data="history_pendings")]
+            other_buttons = [InlineKeyboardButton("Del aula", callback_data="all_pendings"), InlineKeyboardButton("Filtrar", callback_data="filter_pendings"), InlineKeyboardButton("Historial", callback_data="history_pendings")]
             paginator = Paginator(lines, items_per_page=10, text_before="Aquí están tus pendientes directos, no hay más pendientes en el aula:", add_back=True, other_buttons=other_buttons)
             # save paginator in user_data
             context.user_data["paginator"] = paginator
@@ -120,7 +119,7 @@ async def teacher_direct_pendings(update: Update, context: ContextTypes):
         # create a list of lines for each pending
         lines = [f"{i}. {token_type_sql.get_token_type(pending.token_type_id).type}: {user_sql.get_user(pending.student_id).fullname} Fecha: {datetime.date(pending.creation_date.year, pending.creation_date.month, pending.creation_date.day)} -> /pending_{pending.id} {'(Esperando más información)' if pending.more_info == 'PENDING' else ''}{'(Nueva información recibida)' if pending.more_info == 'SENT' else ''}" for i, pending in enumerate(pendings, start=1)]
         # create new paginator using this lines
-        other_buttons = [InlineKeyboardButton("Todos los pendientes", callback_data="all_pendings"), InlineKeyboardButton("Filtrar", callback_data="filter_pendings"), InlineKeyboardButton("Historial", callback_data="history_pendings")]
+        other_buttons = [InlineKeyboardButton("Del aula", callback_data="all_pendings"), InlineKeyboardButton("Filtrar", callback_data="filter_pendings"), InlineKeyboardButton("Historial", callback_data="history_pendings")]
         paginator = Paginator(lines, items_per_page=10, text_before="Mis pendientes directos:", add_back=True, other_buttons=other_buttons)
         # save paginator in user_data
         context.user_data["paginator"] = paginator
@@ -172,7 +171,6 @@ async def pending_history(update: Update, context: ContextTypes):
         )
         return ConversationHandler.END
 
-
 async def pending_info(update: Update, context: ContextTypes):
     """ Shows information of the selected pending.
     Shows options for approving or rejecting it, or alternatively marking it as
@@ -219,9 +217,9 @@ async def pending_info(update: Update, context: ContextTypes):
     if pending.FileID:
         try:
             try:
-                await update.message.reply_photo(pending.FileID, caption=text)
+                await update.message.reply_photo(pending.FileID)
             except BadRequest:
-                await update.message.reply_document(pending.FileID, caption=text)
+                await update.message.reply_document(pending.FileID)
         except BadRequest:
             await update.message.reply_text(
                 "Parece que el archivo no se encuentra disponible.\n Esto puede"
@@ -298,7 +296,12 @@ async def manage_pending(update: Update, context: ContextTypes):
             return states.T_PENDING_OPTIONS
 
     elif query.data == "pending_ask_info":
-        return ConversationHandler.END
+        # asks the teacher to send a message to the student asking for more information
+        await query.edit_message_text(
+            text=f"Ingrese el mensaje que desea enviar al estudiante {user_sql.get_user(pending.student_id).fullname} para pedirle más información sobre el {pending_type}.",
+            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Atrás", callback_data="back")]]),
+        )
+        return states.T_PENDING_MORE_INFO
 
 async def assign_pending(update: Update, context: ContextTypes):
     """ Assigns the pending to the selected teacher as a direct pending.
@@ -433,6 +436,37 @@ async def approve_pending(update: Update, context: ContextTypes):
         )
         return ConversationHandler.END
 
+async def more_info_pending(update: Update, context: ContextTypes):
+    """ Updates the more_info field of the pending to PENDING, adds the message
+    from the teacher to the pending text after a double line break and notifies
+    the student."""
+
+    pending_id = context.user_data["pending"]["id"]
+    pending = pending_sql.get_pending(pending_id)
+    student_chat_id = user_sql.get_user(pending.student_id).telegram_chatid
+    student_name = user_sql.get_user(pending.student_id).fullname
+    token_type = token_type_sql.get_token_type(pending.token_type_id).type
+    teacher_chat_id = user_sql.get_user_by_chatid(update.effective_user.id).telegram_chatid
+
+    # update pending
+    text = f"> Pregunta de {user_sql.get_user_by_chatid(update.effective_user.id).fullname}:\n{update.message.text}"
+    pending_sql.ask_for_more_info(pending_id, text)
+    logger.info(f"Pending {pending_id} updated with more info from teacher")
+    # notify student
+    text = f"El profesor {user_sql.get_user_by_chatid(update.effective_user.id).fullname} ha solicitado más información sobre tu {token_type}.\n\nTu {token_type}:\n{pending_sql.get_pending(pending_id).text}"
+    try:
+        await context.bot.send_message(
+            chat_id=student_chat_id,
+            text=text,
+            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Responder", callback_data=f"pending_more_info_student#{pending_id}#{teacher_chat_id}")]]),
+        )
+    except BadRequest:
+        logger.error(f"Error sending message to student {student_name} (chat_id: {student_chat_id})")
+    await update.message.reply_text(
+        text="El mensaje ha sido enviado al estudiante.",
+        reply_markup=ReplyKeyboardMarkup(keyboards.TEACHER_MAIN_MENU, one_time_keyboard=True, resize_keyboard=True),
+    )
+    return ConversationHandler.END
 
 async def teacher_pendings_back(update: Update, context: ContextTypes):
     """Returns to the teacher menu"""
@@ -487,6 +521,9 @@ teacher_pendings_conv = ConversationHandler(
         states.T_PENDING_APPROVE: [
             CallbackQueryHandler(approve_pending, pattern=r"^pending_approve_confirm$"),
             MessageHandler(filters.TEXT & ~filters.COMMAND, approve_pending),
+        ],
+        states.T_PENDING_MORE_INFO: [
+            MessageHandler(filters.TEXT & ~filters.COMMAND, more_info_pending),
         ],
         
     },
