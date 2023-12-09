@@ -212,8 +212,14 @@ async def manage_pending(update: Update, context: ContextTypes):
 
     if query.data == "pending_approve":
         return ConversationHandler.END
+    
     elif query.data == "pending_reject":
-        return ConversationHandler.END
+        # asks the teacher for an explanation (optional, reason for rejection)
+        await query.edit_message_text(
+            text=f"Puede ingresar una razón para el rechazo de {pending_type} de {user_sql.get_user(pending.student_id).fullname} o presione continuar. Se le notificará al estudiante.",
+            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Continuar", callback_data="pending_reject_continue")], [InlineKeyboardButton("Atrás", callback_data="back")]]),
+        )
+        return states.T_PENDING_REJECT
 
     elif query.data == "pending_assign":
         # get list of teachers of this classroom
@@ -253,6 +259,47 @@ async def assign_pending(update: Update, context: ContextTypes):
         text=f"El pendiente ha sido asignado a {teacher_name}.",
         reply_markup=ReplyKeyboardMarkup(keyboards.TEACHER_MAIN_MENU, one_time_keyboard=True, resize_keyboard=True),
     )
+    return ConversationHandler.END
+
+async def reject_pending(update: Update, context: ContextTypes):
+    """ Sets pending status to REJECTED and notifies the student."""
+    query = update.callback_query
+    if query:
+        query.answer()
+    
+    pending_id = context.user_data["pending"]["id"]
+    
+    if query:
+        pending_sql.reject_pending(pending_id)
+        logger.info(f"Pending {pending_id} rejected")
+        await query.message.reply_text(
+            text="El pendiente ha sido rechazado.",
+            reply_markup=ReplyKeyboardMarkup(keyboards.TEACHER_MAIN_MENU, one_time_keyboard=True, resize_keyboard=True),
+        )
+    else:
+        explanation = update.message.text
+        pending_sql.reject_pending(pending_id, explanation)
+        logger.info(f"Pending {pending_id} rejected")
+        await update.message.reply_text(
+            text="El pendiente ha sido rechazado.",
+            reply_markup=ReplyKeyboardMarkup(keyboards.TEACHER_MAIN_MENU, one_time_keyboard=True, resize_keyboard=True),
+        )
+    # notify student
+    pending = pending_sql.get_pending(pending_id)
+    student_chat_id = user_sql.get_user(pending.student_id).telegram_chatid
+    student_name = user_sql.get_user(pending.student_id).fullname
+    token_type = token_type_sql.get_token_type(pending.token_type_id).type
+    pending_text = pending.text if pending.text else ""
+    text = f"El profesor {user_sql.get_user_by_chatid(update.effective_user.id).fullname} ha rechazado tu {token_type}.\n\nTu {token_type}:\n{pending_text}"
+    if pending.explanation:
+        text += f"\n\nRazón del rechazo:\n{pending.explanation}"
+    try:
+        await context.bot.send_message(
+            chat_id=student_chat_id,
+            text=text,
+        )
+    except BadRequest:
+        logger.error(f"Error sending message to student {student_name} (chat_id: {student_chat_id})")
     return ConversationHandler.END
 
 
@@ -298,7 +345,11 @@ teacher_pendings_conv = ConversationHandler(
         states.T_PENDING_ASSIGN_TEACHER: [
             CallbackQueryHandler(assign_pending, pattern=r"^assign#"),
             paginator_handler,
-            ]
+            ],
+        states.T_PENDING_REJECT: [
+            CallbackQueryHandler(reject_pending, pattern=r"^pending_reject_continue$"),
+            MessageHandler(filters.TEXT & ~filters.COMMAND, reject_pending),
+        ]
         
     },
     fallbacks=[

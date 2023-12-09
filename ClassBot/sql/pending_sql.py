@@ -107,10 +107,10 @@ def approve_pending(pending_id: int, approved_by: int) -> None:
         s.query(Pending).filter(Pending.id == pending_id).update({"status": "APPROVED", "approved_date": func.now(), "approved_by": approved_by})
         s.commit()
 
-def reject_pending(pending_id: int) -> None:
+def reject_pending(pending_id: int, explanation: str = None) -> None:
     """ Rejects the pending. """
     with session() as s:
-        s.query(Pending).filter(Pending.id == pending_id).update({"status": "REJECTED"})    # maybe add a reason? (text) also date and teacher
+        s.query(Pending).filter(Pending.id == pending_id).update({"status": "REJECTED", "explanation": explanation})    # maybe add a date and teacher?
         s.commit()
 
 def assign_pending(pending_id: int, teacher_id: int) -> None:
