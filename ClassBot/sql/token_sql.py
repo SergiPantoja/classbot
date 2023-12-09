@@ -21,8 +21,8 @@ def add_token(
         token_type_id: int, 
         course_id: int, 
         teacher_creator_id: int = None,
+        pending_id: int = None,
         description: str = None,
-        automatic: bool = False,
         image_url: str = None,
         ):
     """ Adds a new token to the database. """
@@ -33,8 +33,8 @@ def add_token(
             token_type_id=token_type_id, 
             course_id=course_id, 
             teacher_creator_id=teacher_creator_id,
+            pending_id=pending_id,
             description=description,
-            automatic=automatic,
             image_url=image_url,
         ))
         s.commit()

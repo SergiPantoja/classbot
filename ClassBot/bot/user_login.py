@@ -132,10 +132,10 @@ async def student_login(update: Update, context: ContextTypes.DEFAULT_TYPE):
             student_classroom_sql.add_student_classroom(student_id, classroom.id)
             logger.info("New student_classroom added to db.\n\n")
             # Give welcome token medal to student
-            token = token_sql.get_token_by_name(f"{classroom.id}_Medalla de bienvenida")
-            if not student_token_sql.exists(student_id, token.id):
-                student_token_sql.add_student_token(student_id, token.id)
-                logger.info("Welcome medal assigned to student.\n\n")
+            #token = token_sql.get_token_by_name(f"{classroom.id}_Medalla de bienvenida")
+            #if not student_token_sql.exists(student_id, token.id):
+            #    student_token_sql.add_student_token(student_id, token.id)
+            #    logger.info("Welcome medal assigned to student.\n\n")
         else:
             logger.info("Student_classroom already exists.\n\n")
         # set active classroom of student to this classroom

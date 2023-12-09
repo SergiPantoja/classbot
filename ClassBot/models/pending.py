@@ -14,6 +14,7 @@ if TYPE_CHECKING:
     from models.token_type import Token_type
     from models.teacher import Teacher
     from models.guild import Guild
+    from models.token import Token
 
 class Pending(Base):
     __tablename__ = "pending"
@@ -48,6 +49,8 @@ class Pending(Base):
     approved_by_teacher: Mapped[Optional["Teacher"]] = relationship(back_populates="approved_pendings", foreign_keys=[approved_by], passive_deletes=True)
     # many-to-one relationship with guild
     guild: Mapped[Optional["Guild"]] = relationship(back_populates="pendings")
+    # one-to-many relationship with token
+    token: Mapped[Optional["Token"]] = relationship(back_populates="related_pending", uselist=False)
 
     def __repr__(self) -> str:
         return f"<Pending(id={self.id}, student_id={self.student_id}, classroom_id={self.classroom_id}, token_type_id={self.token_type_id}, teacher_id={self.teacher_id}, guild_id={self.guild_id}, status={self.status}, creation_date={self.creation_date}, approved_date={self.approved_date}, approved_by={self.approved_by})>"

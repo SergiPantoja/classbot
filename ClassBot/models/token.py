@@ -13,6 +13,7 @@ if TYPE_CHECKING:
     from models.course import Course
     from models.teacher import Teacher
     from models.student_token import Student_token
+    from models.pending import Pending
 
 class Token(Base):
     __tablename__ = 'token'
@@ -21,13 +22,13 @@ class Token(Base):
     token_type_id: Mapped[int] = mapped_column(ForeignKey('token_type.id'))
     course_id: Mapped[int] = mapped_column(ForeignKey('course.id'))
     teacher_creator_id: Mapped[Optional[int]] = mapped_column(ForeignKey('teacher.id'))
+    pending_id: Mapped[Optional[int]] = mapped_column(ForeignKey('pending.id'))
     name: Mapped[str]
     value: Mapped[int]
     description: Mapped[Optional[str]] = mapped_column(default=None)
     creation_date: Mapped[datetime.date] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )
-    automatic: Mapped[bool] = mapped_column(default=False)
     image_url: Mapped[Optional[str]] = mapped_column(default=None)  # only for specific token types
 
     # Many-to-one relationship with token_type
@@ -36,6 +37,8 @@ class Token(Base):
     course: Mapped["Course"] = relationship(back_populates='tokens')
     # Many-to-one relationship with teacher (Optional: some tokens are created by the system)
     teacher_creator: Mapped[Optional["Teacher"]] = relationship(back_populates='created_tokens')
+    # One-to-one relationship with pending
+    related_pending: Mapped[Optional["Pending"]] = relationship(back_populates='token', uselist=False)
     # Many-to-many relationship with student
     students: Mapped[Optional[List["Student_token"]]] = relationship(back_populates='token', cascade='all, delete-orphan')
 
