@@ -13,12 +13,16 @@ from telegram.ext import (
 from utils.logger import logger
 from bot.utils import states, keyboards
 from bot.utils.inline_keyboard_pagination import paginated_keyboard, paginator_handler
+from bot.utils.clean_context import clean_student_context
 from sql import user_sql, classroom_sql, course_sql, student_sql, conference_sql, pending_sql, token_type_sql
 from bot.student_inventory import back_to_student_menu
 
 
 async def student_conferences(update: Update, context: ContextTypes):
     """ Sends a list of conferences belonging to the student current classrooms. """
+    # sanitize context
+    clean_student_context(context)
+    
     # check user role
     if "role" not in context.user_data:
         await update.message.reply_text(
@@ -147,4 +151,5 @@ student_conferences_conv = ConversationHandler(
         CallbackQueryHandler(student_conference_back, pattern="^back$"),
         MessageHandler(filters.Regex("^Atrás$"), back_to_student_menu)
     ],
+    allow_reentry=True,
 )

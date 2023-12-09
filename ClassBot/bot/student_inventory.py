@@ -10,11 +10,15 @@ from telegram.ext import (
 from utils.logger import logger
 from bot.utils import states, keyboards
 from bot.utils.inline_keyboard_pagination import paginated_keyboard, paginator_handler
+from bot.utils.clean_context import clean_student_context
 from sql import user_sql, student_sql, student_token_sql, token_sql, classroom_sql, course_sql
 
 
 async def student_inventory(update: Update, context: ContextTypes):
     """ Shows the student's inventory. """
+    #sanitize context
+    clean_student_context(context)
+    
     # Check user role
     if "role" not in context.user_data:
         await update.message.reply_text(
@@ -61,8 +65,8 @@ async def back_to_student_menu(update: Update, context: ContextTypes):
         ),
     )
     
-    if "pending_answer" in context.user_data:
-        context.user_data.pop("pending_answer")
+    #sanitize context
+    clean_student_context(context)
 
     return ConversationHandler.END
 
@@ -70,6 +74,9 @@ async def back_to_student_menu(update: Update, context: ContextTypes):
 # Medals conversation
 async def show_medal_list(update: Update, context: ContextTypes):
     """ Shows a list of all the medals of this course this student has earned. """
+    #sanitize context
+    clean_student_context(context)
+    
     # Check user role
     if "role" not in context.user_data:
         await update.message.reply_text(
@@ -178,5 +185,6 @@ inv_medal_conv = ConversationHandler(
     fallbacks=[
         MessageHandler(filters.Regex("^Atrás$"), back_to_student_menu),
         CallbackQueryHandler(select_medal_back, pattern="^back$"),
-    ]
+    ],
+    allow_reentry=True,
 )

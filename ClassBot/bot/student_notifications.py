@@ -14,12 +14,23 @@ from utils.logger import logger
 from bot.utils import states, keyboards
 from bot.utils.inline_keyboard_pagination import paginated_keyboard, paginator_handler
 from bot.utils.pagination import Paginator, text_paginator_handler
+from bot.utils.clean_context import clean_student_context
 from sql import user_sql, student_sql, classroom_sql, course_sql, pending_sql, token_type_sql, teacher_classroom_sql, token_sql, student_token_sql
 from bot.student_inventory import back_to_student_menu
 
 
 async def student_answer_pending(update: Update, context: ContextTypes):
     """ Sends a message to the student with the pending info and asks for an answer. """
+    # Check user role
+    if "role" not in context.user_data:
+        await update.message.reply_text(
+            "La sesión ha expirado, por favor inicia sesión nuevamente",
+            reply_markup=ReplyKeyboardMarkup(
+                [["/start"]], resize_keyboard=True
+            )
+        )
+        return ConversationHandler.END
+    
     query = update.callback_query
     await query.answer()
     
@@ -105,6 +116,7 @@ student_answer_pending_conv = ConversationHandler(
         CallbackQueryHandler(student_answer_pending_back, pattern=r"^back$"),
         MessageHandler(filters.Regex("^Atrás$"), back_to_student_menu)
     ],
+    # is a callbackqueryhandler it would be impossible to reenter at certain point if the user lost the message
 )
 
 

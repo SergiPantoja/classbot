@@ -13,12 +13,16 @@ from telegram.ext import (
 from utils.logger import logger
 from bot.utils import states, keyboards
 from bot.utils.inline_keyboard_pagination import paginated_keyboard, paginator_handler
+from bot.utils.clean_context import clean_teacher_context
 from sql import user_sql, teacher_sql, classroom_sql, course_sql, conference_sql
 from bot.teacher_settings import back_to_teacher_menu
 
 
 async def teacher_conferences(update: Update, context: ContextTypes):
     """Shows conferences of the classroom if any, else prompts user to create one"""
+    # Sanitize context.user_data
+    clean_teacher_context(context)
+    
     # check user role
     if "role" not in context.user_data:
         await update.message.reply_text(
@@ -358,4 +362,5 @@ teacher_conferences_conv = ConversationHandler(
         CallbackQueryHandler(teacher_conference_back, pattern=r"^(conference_back|back)$"),
         MessageHandler(filters.Regex("^Atrás$"), back_to_teacher_menu)
         ],
+    allow_reentry=True,
 )

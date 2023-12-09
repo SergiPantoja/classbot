@@ -14,6 +14,7 @@ from utils.logger import logger
 from bot.utils import states, keyboards
 from bot.utils.inline_keyboard_pagination import paginated_keyboard, paginator_handler
 from bot.utils.pagination import Paginator, text_paginator_handler
+from bot.utils.clean_context import clean_teacher_context
 from sql import user_sql, teacher_sql, classroom_sql, course_sql, pending_sql, token_type_sql, teacher_classroom_sql, token_sql, student_token_sql
 from bot.teacher_settings import back_to_teacher_menu
 
@@ -22,6 +23,9 @@ async def teacher_pendings(update: Update, context: ContextTypes):
     """ Shows the pendings of the current classroom, except direct pendings.
     Shows options for filtering by pending type (token_type) or showing direct pendings.
     Enters the pendings conversation handler."""
+    # Sanitize context.user_data
+    clean_teacher_context(context)
+    
     # In case it is a callback query, like when returning from direct pendings
     query = update.callback_query
     if query:
@@ -531,4 +535,5 @@ teacher_pendings_conv = ConversationHandler(
         CallbackQueryHandler(teacher_pendings_back, pattern=r"^back$"),
         MessageHandler(filters.Regex("^Atrás$"), back_to_teacher_menu)
         ],
+    allow_reentry=True,
 )

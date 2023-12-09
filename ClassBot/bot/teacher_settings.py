@@ -10,6 +10,7 @@ from telegram.ext import (
 from utils.logger import logger
 from bot.utils import states, keyboards
 from bot.utils.inline_keyboard_pagination import paginated_keyboard, paginator_handler
+from bot.utils.clean_context import clean_teacher_context
 from sql import user_sql, teacher_sql, classroom_sql, course_sql, student_sql, student_classroom_sql, teacher_classroom_sql
 
 
@@ -19,6 +20,8 @@ async def teacher_settings(update: Update, context: ContextTypes):
         "Elige una opción:",
         reply_markup=ReplyKeyboardMarkup(keyboards.TEACHER_SETTINGS, one_time_keyboard=True, resize_keyboard=True),
     )
+    # Sanitize context.user_data
+    clean_teacher_context(context)
 
 async def back_to_teacher_menu(update: Update, context: ContextTypes):
     """Returns to teacher menu"""
@@ -40,19 +43,8 @@ async def back_to_teacher_menu(update: Update, context: ContextTypes):
         f"Menu en construcción...",
         reply_markup=ReplyKeyboardMarkup(keyboards.TEACHER_MAIN_MENU, one_time_keyboard=True, resize_keyboard=True),
     )
-
     # Sanitize context.user_data
-    if "edit_course" in context.user_data:
-        context.user_data.pop("edit_course")
-    if "edit_classroom" in context.user_data:
-        context.user_data.pop("edit_classroom")
-    if "conference" in context.user_data:
-        context.user_data.pop("conference")
-    if "paginator" in context.user_data:
-        context.user_data.pop("paginator")
-    if "pending" in context.user_data:
-        context.user_data.pop("pending")
-
+    clean_teacher_context(context)
     return ConversationHandler.END
 
 
@@ -65,6 +57,9 @@ async def edit_course(update: Update, context: ContextTypes):
     # If teacher owns the current course, show options to edit it
     # else show options to check other courses
     # If teacher owns no other courses, show option to go back to settings menu
+    
+    # Sanitize context.user_data
+    clean_teacher_context(context)
 
     # create context.user_data["edit_course"]
     context.user_data["edit_course"] = {}
@@ -341,6 +336,9 @@ async def edit_classroom(update: Update, context: ContextTypes):
     Gives options for changing name, passwords, removing students, and if user
     is onwer of the course this classroom belongs to, deleting the classroom
     and removing teachers."""
+    
+    # Sanitize context.user_data
+    clean_teacher_context(context)
 
     # create context.user_data["edit_classroom"]
     context.user_data["edit_classroom"] = {}
@@ -693,6 +691,7 @@ edit_course_conv = ConversationHandler(
         MessageHandler(filters.Regex("^Atrás$"), back_to_teacher_menu),
         CallbackQueryHandler(edit_course_back, pattern=r"^(option_edit_course_back|back)$"),
         ],
+    allow_reentry=True,
 )
 
 edit_classroom_conv = ConversationHandler(
@@ -718,5 +717,6 @@ edit_classroom_conv = ConversationHandler(
     fallbacks=[
         MessageHandler(filters.Regex("^Atrás$"), back_to_teacher_menu),
         CallbackQueryHandler(edit_classroom_back, pattern=r"^(option_edit_classroom_back|back)$"),
-    ]
+    ],
+    allow_reentry=True,
 )
