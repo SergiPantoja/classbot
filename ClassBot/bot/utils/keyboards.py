@@ -7,7 +7,7 @@ SELECT_ROLE = [["Estudiante", "Profesor"]]
 TEACHER_LOGIN = [["Ingresar al aula", "Crear"]]
 TEACHER_CREATE = [["Crear curso", "Crear aula"]]
 
-TEACHER_MAIN_MENU = [["Conferencias del aula", "Opciones"], ["Pendientes", "..."]]
+TEACHER_MAIN_MENU = [["Conferencias del aula", "Opciones"], ["Pendientes", "Atrás"]]
 TEACHER_SETTINGS = [["Editar curso", "Editar aula"], ["Atrás", "Salir"]]
 TEACHER_EDIT_COURSE = [
     [
@@ -75,12 +75,30 @@ TEACHER_PENDING_OPTIONS = [
     [InlineKeyboardButton("Atrás", callback_data="back")],
 ]
 
-STUDENT_MAIN_MENU = [["Conferencias", "Inventario"], ["Opciones", "..."]]
+STUDENT_MAIN_MENU = [["Conferencias", "Inventario"], ["Acciones", "Opciones"], ["Atrás"]]
 STUDENT_INVENTORY = [["Medallas", "Atrás"]]
 STUDENT_CONFERENCE_SELECTED = [
     [
         InlineKeyboardButton("Proponer nuevo título", callback_data="new_title_proposal"),
         InlineKeyboardButton("Atrás", callback_data="back"),
     ],
+]
+STUDENT_ACTIONS = [
+    [
+        InlineKeyboardButton("Intervención en clase", callback_data="action_class_intervention"),
+        InlineKeyboardButton("Rectificar a un profesor", callback_data="action_teacher_correction"),
+    ],
+    [
+        InlineKeyboardButton("Frase de estado", callback_data="action_status_phrase"),
+        InlineKeyboardButton("Actualizar diario", callback_data="action_diary_update"),
+    ],
+    [
+        InlineKeyboardButton("Meme", callback_data="action_meme"),
+        InlineKeyboardButton("Chiste", callback_data="action_joke"),
+    ],
+    [
+        InlineKeyboardButton("Miscelánea", callback_data="action_misc"),
+        InlineKeyboardButton("Atrás", callback_data="back"),
+    ]
 ]
 
