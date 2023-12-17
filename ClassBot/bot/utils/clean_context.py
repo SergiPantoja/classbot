@@ -15,3 +15,5 @@ def clean_student_context(context):
         context.user_data.pop("pending_answer")
     if "conference" in context.user_data:
         context.user_data.pop("conference")
+    if "actions" in context.user_data:
+        context.user_data.pop("actions")

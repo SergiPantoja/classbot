@@ -18,3 +18,5 @@ SI_SELECT_MEDAL = range(1)
 S_SELECT_CONFERENCE, S_NEW_TITLE_PROPOSAL = range(2)
 # answer_pending states
 S_SEND_ANSWER = range(1)
+# student_actions states
+STUDENT_ACTIONS_SELECT_ACTION, STUDENT_ACTIONS_SEND_MISC = range(2)

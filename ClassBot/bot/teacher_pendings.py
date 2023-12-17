@@ -218,31 +218,59 @@ async def pending_info(update: Update, context: ContextTypes):
         text += f"Texto: {pending.text}\n"
     text += "\nSeleccione una opción:"
 
-    if pending.FileID:
-        try:
-            try:
-                await update.message.reply_photo(pending.FileID)
-            except BadRequest:
-                await update.message.reply_document(pending.FileID)
-        except BadRequest:
-            await update.message.reply_text(
-                "Parece que el archivo no se encuentra disponible.\n Esto puede"
-                "deberse a que el usuario lo haya eliminado pues estos archivos"
-                "se guardan en la nube de Telegram. Puede pedirle al usuario que"
-                "lo vuelva a enviar."
-            )
     if "history" in context.user_data["pending"]:
         # if viewing history, only show options to return to history or back to menu
-        await update.message.reply_text(
-            text=text,
-            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Historial", callback_data="history_pendings")],[InlineKeyboardButton("Atrás", callback_data="back")]]),
-        )
-    else:
+        if pending.FileID:
+            try:
+                try:
+                    await update.message.reply_photo(
+                        pending.FileID, 
+                        caption=text,
+                        reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Historial", callback_data="history_pendings")],[InlineKeyboardButton("Atrás", callback_data="back")]]),
+                    )
+                except BadRequest:
+                    await update.message.reply_document(
+                        pending.FileID,
+                        caption=text,
+                        reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Historial", callback_data="history_pendings")],[InlineKeyboardButton("Atrás", callback_data="back")]]),
+                    )
+            except BadRequest:
+                await update.message.reply_text(
+                    text=text + "\n\nSe ha producido un error al mostrar el archivo enviado con el pendiente. Es posible que haya sido eliminado.",
+                    reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Historial", callback_data="history_pendings")],[InlineKeyboardButton("Atrás", callback_data="back")]]),
+                )
+        else:
+            await update.message.reply_text(
+                text=text,
+                reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Historial", callback_data="history_pendings")],[InlineKeyboardButton("Atrás", callback_data="back")]]),
+            )
+
+    else: 
         # if not viewing history, show options to approve, reject or assign
-        await update.message.reply_text(
-            text=text,
-            reply_markup=InlineKeyboardMarkup(keyboards.TEACHER_PENDING_OPTIONS),
-        )
+        if pending.FileID:
+            try:
+                try:
+                    await update.message.reply_photo(
+                        pending.FileID, 
+                        caption=text,
+                        reply_markup=InlineKeyboardMarkup(keyboards.TEACHER_PENDING_OPTIONS),
+                    )
+                except BadRequest:
+                    await update.message.reply_document(
+                        pending.FileID,
+                        caption=text,
+                        reply_markup=InlineKeyboardMarkup(keyboards.TEACHER_PENDING_OPTIONS),
+                    )
+            except BadRequest:
+                await update.message.reply_text(
+                    text=text + "\n\nSe ha producido un error al mostrar el archivo enviado con el pendiente. Es posible que haya sido eliminado.",
+                    reply_markup=InlineKeyboardMarkup(keyboards.TEACHER_PENDING_OPTIONS),
+                )
+        else:
+            await update.message.reply_text(
+                text=text,
+                reply_markup=InlineKeyboardMarkup(keyboards.TEACHER_PENDING_OPTIONS),
+            )
     return states.T_PENDING_OPTIONS
 
 async def manage_pending(update: Update, context: ContextTypes):
@@ -260,23 +288,41 @@ async def manage_pending(update: Update, context: ContextTypes):
         # else, ask for value, comment and create token
         token = token_sql.get_token_by_pending(pending_id)
         if token:
-            await query.edit_message_text(
-                f"Puede enviar un comentario si lo desea. Presione confirmar para aprobar el pendiente.",
-                reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Confirmar", callback_data="pending_approve_confirm")], [InlineKeyboardButton("Atrás", callback_data="back")]]),
-            )
+            if query.message.text:
+                await query.edit_message_text(
+                    f"Puede enviar un comentario si lo desea. Presione confirmar para aprobar el pendiente.",
+                    reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Confirmar", callback_data="pending_approve_confirm")], [InlineKeyboardButton("Atrás", callback_data="back")]]),
+                )
+            else:
+                await query.edit_message_caption(
+                    f"Puede enviar un comentario si lo desea. Presione confirmar para aprobar el pendiente.",
+                    reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Confirmar", callback_data="pending_approve_confirm")], [InlineKeyboardButton("Atrás", callback_data="back")]]),
+                )
             return states.T_PENDING_APPROVE
         else:
-            await query.edit_message_text(
-                f"Ingrese la cantidad de créditos a otorgar por el {pending_type} de {user_sql.get_user(pending.student_id).fullname}. Puede agregar un comentario después de la cantidad de créditos después de un espacio.",
-                reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Atrás", callback_data="back")]]),
-            )
+            if query.message.text:
+                await query.edit_message_text(
+                    f"Ingrese la cantidad de créditos a otorgar por el {pending_type} de {user_sql.get_user(pending.student_id).fullname}. Puede agregar un comentario después de la cantidad de créditos después de un espacio.",
+                    reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Atrás", callback_data="back")]]),
+                )
+            else:
+                await query.edit_message_caption(
+                    f"Ingrese la cantidad de créditos a otorgar por el {pending_type} de {user_sql.get_user(pending.student_id).fullname}. Puede agregar un comentario después de la cantidad de créditos después de un espacio.",
+                    reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Atrás", callback_data="back")]]),
+                )
             return states.T_PENDING_APPROVE
     
     elif query.data == "pending_reject":
         # asks the teacher for an explanation (optional, reason for rejection)
-        await query.edit_message_text(
-            text=f"Puede ingresar una razón para el rechazo de {pending_type} de {user_sql.get_user(pending.student_id).fullname} o presione continuar. Se le notificará al estudiante.",
-            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Continuar", callback_data="pending_reject_continue")], [InlineKeyboardButton("Atrás", callback_data="back")]]),
+        if query.message.text:
+            await query.edit_message_text(
+                text=f"Puede ingresar una razón para el rechazo de {pending_type} de {user_sql.get_user(pending.student_id).fullname} o presione continuar. Se le notificará al estudiante.",
+                reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Continuar", callback_data="pending_reject_continue")], [InlineKeyboardButton("Atrás", callback_data="back")]]),
+            )
+        else:
+            await query.edit_message_caption(
+                text=f"Puede ingresar una razón para el rechazo de {pending_type} de {user_sql.get_user(pending.student_id).fullname} o presione continuar. Se le notificará al estudiante.",
+                reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Continuar", callback_data="pending_reject_continue")], [InlineKeyboardButton("Atrás", callback_data="back")]]),
         )
         return states.T_PENDING_REJECT
 
@@ -286,24 +332,43 @@ async def manage_pending(update: Update, context: ContextTypes):
         if teacher_ids:
             buttons = [InlineKeyboardButton(f"{i}. {user_sql.get_user(teacher_id).fullname}", callback_data=f"assign#{teacher_id}") for i, teacher_id in enumerate(teacher_ids, start=1)]
             # shows the list of teachers to assing the pendign to.
-            await query.edit_message_text(
-                text="Seleccione un profesor para asignarle el pendiente:",
-                reply_markup=paginated_keyboard(buttons, context=context, add_back=True),
+            if query.message.text:
+                await query.edit_message_text(
+                    text="Seleccione un profesor para asignarle el pendiente:",
+                    reply_markup=paginated_keyboard(buttons, context=context, add_back=True),
+                )
+            else:
+                await query.edit_message_caption(
+                    text="Seleccione un profesor para asignarle el pendiente:",
+                    reply_markup=paginated_keyboard(buttons, context=context, add_back=True),
             )
             return states.T_PENDING_ASSIGN_TEACHER
         else:   # no teachers in this classroom
-            old_text = query.message.text
-            await query.edit_message_text(
-                text=old_text + "\n\nNo hay otros profesores en este aula.",
-                reply_markup=InlineKeyboardMarkup(keyboards.TEACHER_PENDING_OPTIONS),
-            )
+            if query.message.text:
+                old_text = query.message.text
+                await query.edit_message_text(
+                    text=old_text + "\n\nNo hay otros profesores en este aula.",
+                    reply_markup=InlineKeyboardMarkup(keyboards.TEACHER_PENDING_OPTIONS),
+                )
+            else:
+                old_text = query.message.caption
+                await query.edit_message_caption(
+                    text=old_text + "\n\nNo hay otros profesores en este aula.",
+                    reply_markup=InlineKeyboardMarkup(keyboards.TEACHER_PENDING_OPTIONS),
+                )
             return states.T_PENDING_OPTIONS
 
     elif query.data == "pending_ask_info":
         # asks the teacher to send a message to the student asking for more information
-        await query.edit_message_text(
-            text=f"Ingrese el mensaje que desea enviar al estudiante {user_sql.get_user(pending.student_id).fullname} para pedirle más información sobre el {pending_type}.",
-            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Atrás", callback_data="back")]]),
+        if query.message.text:
+            await query.edit_message_text(
+                text=f"Ingrese el mensaje que desea enviar al estudiante {user_sql.get_user(pending.student_id).fullname} para pedirle más información sobre el {pending_type}.",
+                reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Atrás", callback_data="back")]]),
+            )
+        else:
+            await query.edit_message_caption(
+                text=f"Ingrese el mensaje que desea enviar al estudiante {user_sql.get_user(pending.student_id).fullname} para pedirle más información sobre el {pending_type}.",
+                reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Atrás", callback_data="back")]]),
         )
         return states.T_PENDING_MORE_INFO
 
@@ -527,7 +592,7 @@ teacher_pendings_conv = ConversationHandler(
             MessageHandler(filters.TEXT & ~filters.COMMAND, approve_pending),
         ],
         states.T_PENDING_MORE_INFO: [
-            MessageHandler(filters.TEXT & ~filters.COMMAND, more_info_pending),
+            MessageHandler((filters.TEXT | filters.PHOTO | filters.Document.ALL) & ~filters.COMMAND, more_info_pending),
         ],
         
     },
