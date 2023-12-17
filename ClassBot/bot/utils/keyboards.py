@@ -7,7 +7,7 @@ SELECT_ROLE = [["Estudiante", "Profesor"]]
 TEACHER_LOGIN = [["Ingresar al aula", "Crear"]]
 TEACHER_CREATE = [["Crear curso", "Crear aula"]]
 
-TEACHER_MAIN_MENU = [["Conferencias del aula", "Opciones"], ["Pendientes", "Atrás"]]
+TEACHER_MAIN_MENU = [["Conferencias del aula", "Opciones"], ["Pendientes", "Gremios"], ["Atrás"]]
 TEACHER_SETTINGS = [["Editar curso", "Editar aula"], ["Atrás", "Salir"]]
 TEACHER_EDIT_COURSE = [
     [
@@ -73,6 +73,26 @@ TEACHER_PENDING_OPTIONS = [
         InlineKeyboardButton("Pedir más información", callback_data="pending_ask_info"),
     ],
     [InlineKeyboardButton("Atrás", callback_data="back")],
+]
+TEACHER_GUILD = [
+    [
+        InlineKeyboardButton("Crear gremio", callback_data="create_guild"),
+        InlineKeyboardButton("Atrás", callback_data="back"),
+    ],
+]
+TEACHER_GUILD_OPTIONS = [
+    [
+        InlineKeyboardButton("Añadir estudiante", callback_data="guild_add_student"),
+        InlineKeyboardButton("Eliminar estudiante", callback_data="guild_remove_student"),
+    ],
+    [
+        InlineKeyboardButton("Cambiar nombre", callback_data="guild_change_name"),
+        InlineKeyboardButton("Eliminar gremio", callback_data="guild_delete"),
+    ],
+    [
+        InlineKeyboardButton("Detalles de los créditos", callback_data="guild_credits_details"),
+        InlineKeyboardButton("Atrás", callback_data="back")
+    ],
 ]
 
 STUDENT_MAIN_MENU = [["Conferencias", "Inventario"], ["Acciones", "Opciones"], ["Atrás"]]

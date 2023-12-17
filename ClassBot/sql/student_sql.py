@@ -1,6 +1,7 @@
 from models.student import Student
 from models.classroom import Classroom
 from models.student_classroom import Student_classroom
+from models.student_guild import Student_guild
 from sql import session
 
 
@@ -27,6 +28,10 @@ def get_students_by_classroom(classroom_id: int) -> list[Student]:
     with session() as s:
         return s.query(Student).join(Student_classroom).filter(Student_classroom.classroom_id == classroom_id).all()
 
+def get_students_by_guild(guild_id: int) -> list[Student]:
+    """ Returns a list of students for the given guild. """
+    with session() as s:
+        return s.query(Student).join(Student_guild).filter(Student_guild.guild_id == guild_id).all()
 
 def add_student(user_id: int) -> None:
     """ Adds a new student to the database. """

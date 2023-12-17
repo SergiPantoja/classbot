@@ -43,7 +43,7 @@ async def student_actions(update: Update, context: ContextTypes):
         "Acciones",
         reply_markup=InlineKeyboardMarkup(keyboards.STUDENT_ACTIONS),
     )
-    return states.STUDENT_ACTIONS_SELECT_ACTION
+    return states.S_ACTIONS_SELECT_ACTION
 
 async def select_action(update: Update, context: ContextTypes):
     """Selects the student action"""
@@ -69,7 +69,7 @@ async def select_action(update: Update, context: ContextTypes):
             "Envíe un mensaje con la miscelánea que desea proponer",
             reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Atrás", callback_data="back")]]),
         )
-        return states.STUDENT_ACTIONS_SEND_MISC
+        return states.S_ACTIONS_SEND_MISC
     
 async def send_misc(update: Update, context: ContextTypes):
     "Creates a new miscelanious pending"
@@ -128,8 +128,8 @@ async def student_actions_back(update: Update, context: ContextTypes):
 student_actions_conv = ConversationHandler(
     entry_points=[MessageHandler(filters.Regex("^Acciones$"), student_actions)],
     states={
-        states.STUDENT_ACTIONS_SELECT_ACTION: [CallbackQueryHandler(select_action, pattern=r"^action_")],
-        states.STUDENT_ACTIONS_SEND_MISC: [MessageHandler((filters.TEXT | filters.PHOTO | filters.Document.ALL | filters.Sticker.ALL) & ~filters.COMMAND, send_misc)],
+        states.S_ACTIONS_SELECT_ACTION: [CallbackQueryHandler(select_action, pattern=r"^action_")],
+        states.S_ACTIONS_SEND_MISC: [MessageHandler((filters.TEXT | filters.PHOTO | filters.Document.ALL | filters.Sticker.ALL) & ~filters.COMMAND, send_misc)],
     },
     fallbacks=[
         CallbackQueryHandler(student_actions_back, pattern=r"^back$"),

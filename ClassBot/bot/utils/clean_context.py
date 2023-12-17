@@ -9,6 +9,8 @@ def clean_teacher_context(context):
         context.user_data.pop("paginator")
     if "pending" in context.user_data:
         context.user_data.pop("pending")
+    if "guild" in context.user_data:
+        context.user_data.pop("guild")
 
 def clean_student_context(context):
     if "pending_answer" in context.user_data:

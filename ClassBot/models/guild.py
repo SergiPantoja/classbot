@@ -28,4 +28,5 @@ class Guild(Base):
     # many-to-many relationship with token
     tokens: Mapped[Optional[List["Guild_token"]]] = relationship(back_populates="guild", cascade="all, delete-orphan")
 
-    # def __repr_(self) -> str:
+    def __repr__(self):
+        return f"<Guild(id={self.id}, classroom_id={self.classroom_id}, name={self.name})>"
