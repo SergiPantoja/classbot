@@ -11,5 +11,5 @@ from models.pending import Pending
 from models.token import Token
 from models.student_token import Student_token
 from models.conference import Conference
-
-
+from models.student_guild import Student_guild
+from models.guild_token import Guild_token

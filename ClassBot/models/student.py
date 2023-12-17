@@ -11,6 +11,7 @@ if TYPE_CHECKING:
     from models.student_classroom import Student_classroom
     from models.student_token import Student_token
     from models.pending import Pending
+    from models.student_guild import Student_guild
 
 # specialization of User table
 class Student(Base):
@@ -28,6 +29,8 @@ class Student(Base):
     tokens: Mapped[Optional[List["Student_token"]]] = relationship(back_populates="student", cascade='all, delete-orphan')
     # One-to-many relationship with pending
     pendings: Mapped[Optional[List["Pending"]]] = relationship(back_populates="student", cascade='all, delete-orphan')
+    # Many-to-many relationship with guild
+    guilds: Mapped[Optional[List["Student_guild"]]] = relationship(back_populates="student", cascade='all, delete-orphan')
 
     def __repr__(self) -> str:
         return f'Student(id={self.id})'
