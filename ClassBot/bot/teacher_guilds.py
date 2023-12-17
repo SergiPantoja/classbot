@@ -179,9 +179,28 @@ async def guild_options(update: Update, context: ContextTypes):
             )
             return states.T_GUILD_OPTIONS
 
-    elif query.data == "guild_remove":
-        # delete guild
-        pass
+    elif query.data == "guild_delete":
+        # delete guild and show guilds
+        guild_id = context.user_data["guild"]["id"]
+        guild_sql.delete_guild(guild_id)
+        # get guilds
+        guilds = guild_sql.get_guilds_by_classroom(teacher_sql.get_teacher(user_sql.get_user_by_chatid(update.effective_user.id).id).active_classroom_id)
+        if guilds:
+            # Show guilds with pagination
+            buttons = [InlineKeyboardButton(f"{i}. {guild.name}", callback_data=f"guild#{guild.id}") for i, guild in enumerate(guilds, start=1)]
+            other_buttons = [InlineKeyboardButton("Crear gremio", callback_data="create_guild")]
+            await query.edit_message_text(
+                "Gremios del aula:",
+                reply_markup=paginated_keyboard(buttons, context=context, add_back=True, other_buttons=other_buttons),
+            )
+            return states.T_GUILD_SELECT
+        else:
+            # No guilds in classroom
+            await query.edit_message_text(
+                "No hay gremios en esta aula, desea crear uno?",
+                reply_markup=InlineKeyboardMarkup(keyboards.TEACHER_GUILD),
+            )
+            return states.T_GUILD_CREATE
 
     elif query.data == "guild_change_name":
         await query.message.reply_text(
