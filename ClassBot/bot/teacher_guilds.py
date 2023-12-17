@@ -133,7 +133,7 @@ async def guild_options(update: Update, context: ContextTypes):
     await query.answer()
 
     if query.data == "guild_add_student":
-        # get students not in this guild and in the active classroom of the teacher
+        # get students not in any guild and in the active classroom of the teacher
         teacher = teacher_sql.get_teacher(user_sql.get_user_by_chatid(update.effective_user.id).id)
         classroom_id = teacher.active_classroom_id
         # get students in classroom
@@ -162,7 +162,23 @@ async def guild_options(update: Update, context: ContextTypes):
 
     elif query.data == "guild_remove_student":
         # get students in this guild
-        pass
+        guild_id = context.user_data["guild"]["id"]
+        students = student_sql.get_students_by_guild(guild_id)
+
+        if students:
+            buttons = [InlineKeyboardButton(f"{i}. {user_sql.get_user(student.id).fullname}", callback_data=f"remove_student#{student.id}") for i, student in enumerate(students, start=1)]
+            await query.edit_message_text(
+                text="Seleccione el estudiante a eliminar:",
+                reply_markup=paginated_keyboard(buttons, context=context, add_back=True),
+            )
+            return states.T_GUILD_SELECT_STUDENT_TO_REMOVE
+        else:
+            await query.edit_message_text(
+                text="No hay estudiantes para eliminar",
+                reply_markup=InlineKeyboardMarkup(keyboards.TEACHER_GUILD_OPTIONS),
+            )
+            return states.T_GUILD_OPTIONS
+
     elif query.data == "guild_remove":
         # delete guild
         pass
@@ -228,6 +244,31 @@ async def select_student_to_add(update: Update, context: ContextTypes):
     )
     return states.T_GUILD_OPTIONS
 
+async def select_student_to_remove(update: Update, context: ContextTypes):
+    """ Removes the student from the guild """
+    query = update.callback_query
+    query.answer()
+
+    student_id = int(query.data.split("#")[1])
+    guild_id = context.user_data["guild"]["id"]
+
+    # remove student from guild
+    student_guild_sql.remove_student(student_id, guild_id)
+
+    # get students in guild
+    students = student_sql.get_students_by_guild(guild_id)
+
+    if students:
+        student_text = "\n".join([f"{i}. {user_sql.get_user(student.id).fullname}" for i, student in enumerate(students, start=1)])
+    else:
+        student_text = "No hay estudiantes en este gremio"
+    
+    text = f"Gremio: {guild_sql.get_guild(guild_id).name}\n\nEstudiantes:\n{student_text}"
+    await query.edit_message_text(
+        text=text,
+        reply_markup=InlineKeyboardMarkup(keyboards.TEACHER_GUILD_OPTIONS),
+    )
+    return states.T_GUILD_OPTIONS
 
 async def teacher_guilds_back(update: Update, context: ContextTypes):
     """Returns to the teacher menu"""
@@ -265,7 +306,14 @@ teacher_guilds_conv = ConversationHandler(
         states.T_GUILD_CREATE_NAME: [MessageHandler(filters.TEXT & ~filters.COMMAND, teacher_guilds_create_name)],
         states.T_GUILD_OPTIONS: [CallbackQueryHandler(guild_options, pattern=r"^guild_")],
         states.T_GUILD_OPTIONS_EDIT_NAME: [MessageHandler(filters.TEXT & ~filters.COMMAND, edit_guild_name)],
-        states.T_GUILD_SELECT_STUDENT_TO_ADD: [CallbackQueryHandler(select_student_to_add, pattern=r"^add_student#")],
+        states.T_GUILD_SELECT_STUDENT_TO_ADD: [
+            CallbackQueryHandler(select_student_to_add, pattern=r"^add_student#"),
+            paginator_handler,
+        ],
+        states.T_GUILD_SELECT_STUDENT_TO_REMOVE: [
+            CallbackQueryHandler(select_student_to_remove, pattern=r"^remove_student#"),
+            paginator_handler,
+        ],
     },
     fallbacks=[
         CallbackQueryHandler(teacher_guilds_back, pattern=r"^back$"),
