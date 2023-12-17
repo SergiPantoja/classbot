@@ -11,7 +11,7 @@ from utils.logger import logger
 from bot.utils import states, keyboards
 from bot.utils.inline_keyboard_pagination import paginated_keyboard, paginator_handler
 from bot.utils.clean_context import clean_teacher_context
-from sql import user_sql, teacher_sql, classroom_sql, course_sql, student_sql, student_classroom_sql, teacher_classroom_sql
+from sql import user_sql, teacher_sql, classroom_sql, course_sql, student_sql, student_classroom_sql, teacher_classroom_sql, student_guild_sql
 
 
 async def teacher_settings(update: Update, context: ContextTypes):
@@ -583,6 +583,8 @@ async def edit_classroom_remove_student(update: Update, context: ContextTypes):
         logger.info(f"Student {student_id} active classroom set to None when removed from classroom {teacher.active_classroom_id}")
     # remove student from classroom
     student_classroom_sql.remove_student(student_id, teacher.active_classroom_id)
+    # If student is in a guild of this classroom, remove it
+    student_guild_sql.remove_student(student_id, teacher.active_classroom_id)
     
     classroom = classroom_sql.get_classroom(teacher.active_classroom_id)
     course = course_sql.get_course(classroom.course_id)
