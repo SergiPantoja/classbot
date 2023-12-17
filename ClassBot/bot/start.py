@@ -18,6 +18,7 @@ from bot.student_inventory import student_inventory_handler, inv_medal_conv
 from bot.student_conferences import student_conferences_conv
 from bot.student_notifications import student_answer_pending_conv
 from bot.student_actions import student_actions_conv
+from bot.student_guild import student_guild_handler
 
 
 # configs (move to file later)
@@ -78,6 +79,7 @@ def _add_handlers(app):
     app.add_handler(student_answer_pending_conv)
     app.add_handler(student_actions_conv)
     app.add_handler(student_inventory_handler)
+    app.add_handler(student_guild_handler)
 
     app.add_handler(settings_handler)
     app.add_handler(back_to_menu_handler)

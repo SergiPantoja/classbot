@@ -95,7 +95,7 @@ TEACHER_GUILD_OPTIONS = [
     ],
 ]
 
-STUDENT_MAIN_MENU = [["Conferencias", "Inventario"], ["Acciones", "Opciones"], ["Atrás"]]
+STUDENT_MAIN_MENU = [["Conferencias", "Inventario"], ["Acciones", "Gremio"], ["Opciones", "Atrás"]]
 STUDENT_INVENTORY = [["Medallas", "Atrás"]]
 STUDENT_CONFERENCE_SELECTED = [
     [
