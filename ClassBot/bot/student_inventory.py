@@ -34,10 +34,10 @@ async def student_inventory(update: Update, context: ContextTypes):
         )
         return ConversationHandler.END
    
-    # get total credits of the student in this course
+    # get total credits of the student in this classroom
     student = student_sql.get_student(user_sql.get_user_by_chatid(update.effective_chat.id).id)
-    course_id = classroom_sql.get_classroom(student.active_classroom_id).course_id
-    tokens = student_token_sql.get_tokens_by_student_and_course(student.id, course_id)
+    classroom_id = student.active_classroom_id
+    tokens = student_token_sql.get_tokens_by_student_and_classroom(student.id, classroom_id)
     total_credits = sum([token.value for token in tokens])
 
     await update.message.reply_text(
@@ -94,10 +94,10 @@ async def show_medal_list(update: Update, context: ContextTypes):
     
     # get student
     student = student_sql.get_student(user_sql.get_user_by_chatid(update.effective_chat.id).id)
-    # get course
-    course_id = classroom_sql.get_classroom(student.active_classroom_id).course_id
+    # get classroom
+    classroom_id = student.active_classroom_id
     # get medals
-    tokens = student_token_sql.get_tokens_by_student_and_course(student.id, course_id)
+    tokens = student_token_sql.get_tokens_by_student_and_classroom(student.id, classroom_id)
     medals = [token for token in tokens if token.token_type_id == 1] # 1 is the id of the medal token type
 
     if medals:
@@ -157,8 +157,8 @@ async def select_medal_back(update: Update, context: ContextTypes):
 
     # get total credits of the student in this course
     student = student_sql.get_student(user_sql.get_user_by_chatid(update.effective_chat.id).id)
-    course_id = classroom_sql.get_classroom(student.active_classroom_id).course_id
-    tokens = student_token_sql.get_tokens_by_student_and_course(student.id, course_id)
+    classroom_id = student.active_classroom_id
+    tokens = student_token_sql.get_tokens_by_student_and_classroom(student.id, classroom_id)
     total_credits = sum([token.value for token in tokens])
 
     await query.message.reply_text(

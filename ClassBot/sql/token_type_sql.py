@@ -18,8 +18,8 @@ def get_token_type_by_type(type: str) -> Token_type | None:
         return s.query(Token_type).filter(Token_type.type == type).first()
 
 
-def add_token_type(type: str, course_id: int = None, hidden: bool = False) -> None:
+def add_token_type(type: str, classroom_id: int = None, hidden: bool = False) -> None:
     """ Adds a new token_type to the database. """
     with session() as s:
-        s.add(Token_type(type=type, course_id=course_id, hidden=hidden))
+        s.add(Token_type(type=type, classroom_id=classroom_id, hidden=hidden))
         s.commit()

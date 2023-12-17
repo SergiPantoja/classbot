@@ -442,12 +442,13 @@ async def approve_pending(update: Update, context: ContextTypes):
     student_chat_id = user_sql.get_user(pending.student_id).telegram_chatid
     student_name = user_sql.get_user(pending.student_id).fullname
     token_type = token_type_sql.get_token_type(pending.token_type_id).type
-    course_id = classroom_sql.get_classroom(pending.classroom_id).course_id
+    classroom_id = pending.classroom_id
 
     if query:
         # token already exists and no comment provided
         token = token_sql.get_token_by_pending(pending_id)
         if token:
+            #TODO: verify that token is not already assigned to student
             # assign token to student
             student_token_sql.add_student_token(student_id=pending.student_id, token_id=token.id)
             logger.info(f"Token {token.id} assigned to student {pending.student_id}")  
@@ -478,7 +479,7 @@ async def approve_pending(update: Update, context: ContextTypes):
             value = int(text)
             comment = None
         # create token
-        token_sql.add_token(name=f"{token_type} de {student_name}", value=value, token_type_id=pending.token_type_id, course_id=course_id, pending_id=pending_id)
+        token_sql.add_token(name=f"{token_type} de {student_name}", value=value, token_type_id=pending.token_type_id, classroom_id=classroom_id, pending_id=pending_id)
         logger.info(f"Token {token_type} created for student {student_name} with value {value}")
         # get token id
         token = token_sql.get_token_by_pending(pending_id) # should be only one

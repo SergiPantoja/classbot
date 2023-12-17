@@ -13,6 +13,8 @@ if TYPE_CHECKING:
     from models.conference import Conference
     from models.guild import Guild
     from models.pending import Pending
+    from models.token_type import Token_type
+    from models.token import Token
 
 class Classroom(Base):
     __tablename__ = 'classroom'
@@ -35,6 +37,10 @@ class Classroom(Base):
     guilds: Mapped[Optional[List["Guild"]]] = relationship(back_populates="classroom", cascade="all, delete-orphan")
     # one-to-many relationship with pending
     pendings: Mapped[Optional[List["Pending"]]] = relationship(back_populates="classroom", cascade="all, delete-orphan")
+    # One-to-many relationship with token_type
+    token_types: Mapped[Optional[List["Token_type"]]] = relationship(back_populates='classroom', cascade='all, delete-orphan')
+    # One-to-many relationship with token
+    tokens: Mapped[Optional[List["Token"]]] = relationship(back_populates='classroom', cascade='all, delete-orphan')
 
     def __repr__(self) -> str:
         return f'Classroom(id={self.id}, course_id={self.course_id}, name={self.name}, teacher_auth={self.teacher_auth}, student_auth={self.student_auth})'

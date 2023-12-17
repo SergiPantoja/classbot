@@ -26,10 +26,10 @@ def exists(student_id: int, token_id: int) -> bool:
     with session() as s:
         return s.query(Student_token).filter(Student_token.student_id == student_id).filter(Student_token.token_id == token_id).first() is not None
     
-def get_tokens_by_student_and_course(student_id: int, course_id: int) -> list[Token]:
+def get_tokens_by_student_and_classroom(student_id: int, classroom_id: int) -> list[Token]:
     """ Returns a list of tokens for the given student and course. """
     with session() as s:
-        return s.query(Token).join(Student_token).filter(Student_token.student_id == student_id).filter(Token.course_id == course_id).all()
+        return s.query(Token).join(Student_token).filter(Student_token.student_id == student_id).filter(Token.classroom_id == classroom_id).all()
 
 
 def remove_token(student_id: int, token_id: int) -> None:
