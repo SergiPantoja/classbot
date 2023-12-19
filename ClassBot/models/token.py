@@ -15,6 +15,7 @@ if TYPE_CHECKING:
     from models.student_token import Student_token
     from models.pending import Pending
     from models.guild_token import Guild_token
+    from models.activity import Activity
 
 class Token(Base):
     __tablename__ = 'token'
@@ -42,6 +43,8 @@ class Token(Base):
     students: Mapped[Optional[List["Student_token"]]] = relationship(back_populates='token', cascade='all, delete-orphan')
     # Many-to-many relationship with guild
     guilds: Mapped[Optional[List["Guild_token"]]] = relationship(back_populates='token', cascade='all, delete-orphan')
+    # One-to-one relationship with activity (delete activity if token is deleted)
+    activity: Mapped[Optional["Activity"]] = relationship(back_populates='token', cascade='all, delete-orphan')
 
     def __repr__(self) -> str:
         return f'Token(id={self.id}, token_type_id={self.token_type_id}, classroom={self.classroom_id}, teacher_creator_id={self.teacher_creator_id}, name={self.name}, description={self.description}, creation_date={self.creation_date}, image_url={self.image_url})'

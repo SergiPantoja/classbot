@@ -13,3 +13,5 @@ from models.student_token import Student_token
 from models.conference import Conference
 from models.student_guild import Student_guild
 from models.guild_token import Guild_token
+from models.activity_type import Activity_type
+from models.activity import Activity

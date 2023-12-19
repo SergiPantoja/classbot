@@ -10,6 +10,7 @@ if TYPE_CHECKING:
     from models.classroom import Classroom # avoid circular import
     from models.token import Token
     from models.pending import Pending
+    from models.activity_type import Activity_type
 
 class Token_type(Base):
     __tablename__ = 'token_type'
@@ -25,6 +26,8 @@ class Token_type(Base):
     tokens: Mapped[Optional[List["Token"]]] = relationship(back_populates='token_type', cascade='all, delete-orphan')
     # One-to-many relationship with pending
     pendings: Mapped[Optional[List["Pending"]]] = relationship(back_populates='token_type', cascade='all, delete-orphan')
+    # one-to-one relationship with activity_type (delete activity_type if token_type is deleted)
+    activity_type: Mapped[Optional["Activity_type"]] = relationship(back_populates='token_type', cascade='all, delete-orphan')
 
     __table_args__ = (
         # Unique constraint for course_id and type
