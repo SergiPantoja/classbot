@@ -23,7 +23,6 @@ class Token(Base):
     token_type_id: Mapped[int] = mapped_column(ForeignKey('token_type.id'))
     classroom_id: Mapped[int] = mapped_column(ForeignKey('classroom.id'))
     teacher_creator_id: Mapped[Optional[int]] = mapped_column(ForeignKey('teacher.id'))
-    pending_id: Mapped[Optional[int]] = mapped_column(ForeignKey('pending.id'))
     name: Mapped[str]
     description: Mapped[Optional[str]] = mapped_column(default=None)
     creation_date: Mapped[datetime.date] = mapped_column(
@@ -37,8 +36,8 @@ class Token(Base):
     classroom: Mapped["Classroom"] = relationship(back_populates='tokens')
     # Many-to-one relationship with teacher (Optional: some tokens are created by the system)
     teacher_creator: Mapped[Optional["Teacher"]] = relationship(back_populates='created_tokens')
-    # One-to-one relationship with pending
-    related_pending: Mapped[Optional["Pending"]] = relationship(back_populates='token', uselist=False)
+    # One-to-many relationship with pending
+    related_pendings: Mapped[Optional[List["Pending"]]] = relationship(back_populates='token', cascade='all, delete-orphan')
     # Many-to-many relationship with student
     students: Mapped[Optional[List["Student_token"]]] = relationship(back_populates='token', cascade='all, delete-orphan')
     # Many-to-many relationship with guild

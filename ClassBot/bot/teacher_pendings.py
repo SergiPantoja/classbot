@@ -438,14 +438,16 @@ async def approve_pending(update: Update, context: ContextTypes):
         value = int(text)
         comment = None
     
-    token = token_sql.get_token_by_pending(pending_id)
+    token = pending_sql.get_token(pending_id)
     if not token:
         # create token
-        token_sql.add_token(name=f"{token_type} de {student_name}", token_type_id=pending.token_type_id, classroom_id=classroom_id, pending_id=pending_id)
+        token_sql.add_token(name=f"{token_type} de {student_name}", token_type_id=pending.token_type_id, classroom_id=classroom_id)
         logger.info(f"Token {token_type} created")
+        # update pending with this token
+        pending_sql.update_token(pending_id, token_sql.get_last_token().id)
 
     # get token id
-    token = token_sql.get_token_by_pending(pending_id) # should be only one
+    token = pending_sql.get_token(pending_id)
     # assign token to student
     student_token_sql.add_student_token(student_id=pending.student_id, token_id=token.id, value=value, teacher_id=user_sql.get_user_by_chatid(update.effective_user.id).id)
     logger.info(f"Token {token.id} assigned to student {pending.student_id} with value {value}")

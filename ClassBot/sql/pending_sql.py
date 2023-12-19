@@ -2,6 +2,7 @@ from sqlalchemy import select
 from sqlalchemy.sql import func
 
 from models.pending import Pending
+from models.token import Token
 from sql import session
 
 
@@ -9,6 +10,21 @@ def get_pending(id: int) -> Pending | None:
     """ Returns a pending object with the given id. None if not found."""
     with session() as s:
         return s.query(Pending).filter(Pending.id == id).first()
+
+def get_token(pending_id: int) -> Token | None:
+    """ If this pending has a non-null token_id, returns the token object with that id. None if not found."""
+    with session() as s:
+        pending = s.query(Pending).filter(Pending.id == pending_id).first()
+        if pending.token_id:
+            return s.query(Token).filter(Token.id == pending.token_id).first()
+        else:
+            return None
+
+def update_token(pending_id: int, token_id: int) -> None:
+    """ Updates the token_id of the pending. """
+    with session() as s:
+        s.query(Pending).filter(Pending.id == pending_id).update({"token_id": token_id})
+        s.commit()
 
 def get_pendings_by_classroom(classroom_id: int, status: str = None, direct_pending: int = None) -> list[Pending]:
     """ Returns a list of pendings belonging to the given classroom. 
@@ -95,10 +111,10 @@ def get_pendings_by_guild(guild_id: int, status: str = None, direct_pending: int
             return s.query(Pending).filter(Pending.guild_id == guild_id, Pending.teacher_id == direct_pending).order_by(Pending.creation_date.desc()).all()
 
 
-def add_pending(student_id: int, classroom_id: int, token_type_id: int, teacher_id: int = None, guild_id: int = None, status: str = "PENDING", text: str = None, FileID: str = None) -> None:
+def add_pending(student_id: int, classroom_id: int, token_type_id: int, token_id: int = None, teacher_id: int = None, guild_id: int = None, status: str = "PENDING", text: str = None, FileID: str = None) -> None:
     """ Adds a new pending to the database. """
     with session() as s:
-        s.add(Pending(student_id=student_id, classroom_id=classroom_id, token_type_id=token_type_id, teacher_id=teacher_id, guild_id=guild_id, status=status, text=text, FileID=FileID))
+        s.add(Pending(student_id=student_id, classroom_id=classroom_id, token_type_id=token_type_id, token_id=token_id, teacher_id=teacher_id, guild_id=guild_id, status=status, text=text, FileID=FileID))
         s.commit()
 
 def approve_pending(pending_id: int, approved_by: int) -> None:

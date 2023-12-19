@@ -23,6 +23,7 @@ class Pending(Base):
     student_id: Mapped[int] = mapped_column(ForeignKey('student.id'))
     classroom_id: Mapped[int] = mapped_column(ForeignKey('classroom.id'))
     token_type_id: Mapped[int] = mapped_column(ForeignKey('token_type.id'))
+    token_id: Mapped[Optional[int]] = mapped_column(ForeignKey('token.id', ondelete='SET NULL'))
     teacher_id: Mapped[Optional[int]] = mapped_column(ForeignKey('teacher.id', ondelete='SET NULL'))
     guild_id: Mapped[Optional[int]] = mapped_column(ForeignKey('guild.id'))
     status: Mapped[str] = mapped_column(default='pending') # PENDING, APPROVED, REJECTED
@@ -49,8 +50,9 @@ class Pending(Base):
     approved_by_teacher: Mapped[Optional["Teacher"]] = relationship(back_populates="approved_pendings", foreign_keys=[approved_by], passive_deletes=True)
     # many-to-one relationship with guild
     guild: Mapped[Optional["Guild"]] = relationship(back_populates="pendings")
-    # one-to-many relationship with token
-    token: Mapped[Optional["Token"]] = relationship(back_populates="related_pending", uselist=False)
+    # Many-to-one relationship with token
+    token: Mapped[Optional["Token"]] = relationship(back_populates="related_pendings")
+    
 
     def __repr__(self) -> str:
-        return f"<Pending(id={self.id}, student_id={self.student_id}, classroom_id={self.classroom_id}, token_type_id={self.token_type_id}, teacher_id={self.teacher_id}, guild_id={self.guild_id}, status={self.status}, creation_date={self.creation_date}, approved_date={self.approved_date}, approved_by={self.approved_by})>"
+        return f'Pending(id={self.id}, student_id={self.student_id}, classroom_id={self.classroom_id}, token_type_id={self.token_type_id}, token_id={self.token_id}, teacher_id={self.teacher_id}, guild_id={self.guild_id}, status={self.status}, creation_date={self.creation_date}, approved_date={self.approved_date}, approved_by={self.approved_by}, text={self.text}, FileID={self.FileID}, explanation={self.explanation}, more_info={self.more_info})'

@@ -14,18 +14,16 @@ def get_token_by_name(name: str) -> Token | None:
     with session() as s:
         return s.query(Token).filter(Token.name == name).first()
 
-def get_token_by_pending(pending_id: int) -> Token | None:
-    """ Returns the first token object with the given pending_id. None if not found."""
+def get_last_token() -> Token | None:
+    """ Returns the last token in the database. None if not found."""
     with session() as s:
-        return s.query(Token).filter(Token.pending_id == pending_id).first()
-
+        return s.query(Token).order_by(Token.id.desc()).first()
 
 def add_token(
         name: str, 
         token_type_id: int, 
         classroom_id: int, 
         teacher_creator_id: int = None,
-        pending_id: int = None,
         description: str = None,
         image_url: str = None,
         ):
@@ -36,7 +34,6 @@ def add_token(
             token_type_id=token_type_id, 
             classroom_id=classroom_id, 
             teacher_creator_id=teacher_creator_id,
-            pending_id=pending_id,
             description=description,
             image_url=image_url,
         ))
