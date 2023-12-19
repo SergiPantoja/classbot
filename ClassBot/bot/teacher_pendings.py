@@ -15,7 +15,7 @@ from bot.utils import states, keyboards
 from bot.utils.inline_keyboard_pagination import paginated_keyboard, paginator_handler
 from bot.utils.pagination import Paginator, text_paginator_handler
 from bot.utils.clean_context import clean_teacher_context
-from sql import user_sql, teacher_sql, classroom_sql, course_sql, pending_sql, token_type_sql, teacher_classroom_sql, token_sql, student_token_sql
+from sql import user_sql, teacher_sql, classroom_sql, course_sql, pending_sql, token_type_sql, teacher_classroom_sql, token_sql, student_token_sql, guild_sql
 from bot.teacher_settings import back_to_teacher_menu
 
 
@@ -200,10 +200,10 @@ async def pending_info(update: Update, context: ContextTypes):
 
     text = f"{token_type} de {student_name} el {creation_date}:\n\n"
 
-    #if pending.guild_id:
-        #guild_name = guild_sql.get_guild(pending.guild_id).name
-        #text = text.rstrip("\n")
-        #text += f"\nGremio: {guild_name}\n\n"
+    if pending.guild_id:
+        guild_name = guild_sql.get_guild(pending.guild_id).name
+        text = text.rstrip("\n")
+        text += f"\nGremio: {guild_name}\n\n"
     if pending.status == "APPROVED":
         approved_by = user_sql.get_user(pending.approved_by).fullname
         approved_date = datetime.date(pending.approved_date.year, pending.approved_date.month, pending.approved_date.day)
