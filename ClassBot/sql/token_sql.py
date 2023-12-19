@@ -22,7 +22,6 @@ def get_token_by_pending(pending_id: int) -> Token | None:
 
 def add_token(
         name: str, 
-        value: int,
         token_type_id: int, 
         classroom_id: int, 
         teacher_creator_id: int = None,
@@ -34,7 +33,6 @@ def add_token(
     with session() as s:
         s.add(Token(
             name=name, 
-            value=value,
             token_type_id=token_type_id, 
             classroom_id=classroom_id, 
             teacher_creator_id=teacher_creator_id,

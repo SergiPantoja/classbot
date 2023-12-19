@@ -37,9 +37,8 @@ async def student_inventory(update: Update, context: ContextTypes):
     # get total credits of the student in this classroom
     student = student_sql.get_student(user_sql.get_user_by_chatid(update.effective_chat.id).id)
     classroom_id = student.active_classroom_id
-    tokens = student_token_sql.get_tokens_by_student_and_classroom(student.id, classroom_id)
-    total_credits = sum([token.value for token in tokens])
-
+    total_credits = student_token_sql.get_total_value_by_classroom(student.id, classroom_id)
+    
     await update.message.reply_text(
         f"Tienes {total_credits} créditos",
         reply_markup=ReplyKeyboardMarkup(
@@ -101,7 +100,7 @@ async def show_medal_list(update: Update, context: ContextTypes):
     medals = [token for token in tokens if token.token_type_id == 1] # 1 is the id of the medal token type
 
     if medals:
-        buttons = [InlineKeyboardButton(f"{i}. {medal.name}:{medal.value}", callback_data=f"medal#{medal.id}") for i, medal in enumerate(medals, start=1)]
+        buttons = [InlineKeyboardButton(f"{i}. {medal.name}", callback_data=f"medal#{medal.id}") for i, medal in enumerate(medals, start=1)]
         await update.message.reply_text(
             "Medallas:",
             reply_markup=paginated_keyboard(buttons, context=context, add_back=True),

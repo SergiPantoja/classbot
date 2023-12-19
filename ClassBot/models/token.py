@@ -25,7 +25,6 @@ class Token(Base):
     teacher_creator_id: Mapped[Optional[int]] = mapped_column(ForeignKey('teacher.id'))
     pending_id: Mapped[Optional[int]] = mapped_column(ForeignKey('pending.id'))
     name: Mapped[str]
-    value: Mapped[int]
     description: Mapped[Optional[str]] = mapped_column(default=None)
     creation_date: Mapped[datetime.date] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
@@ -46,4 +45,4 @@ class Token(Base):
     guilds: Mapped[Optional[List["Guild_token"]]] = relationship(back_populates='token', cascade='all, delete-orphan')
 
     def __repr__(self) -> str:
-        return f'Token(id={self.id}, token_type_id={self.token_type_id}, classroom={self.classroom_id}, teacher_creator_id={self.teacher_creator_id}, name={self.name}, value={self.value}, description={self.description}, creation_date={self.creation_date}, image_url={self.image_url})'
+        return f'Token(id={self.id}, token_type_id={self.token_type_id}, classroom={self.classroom_id}, teacher_creator_id={self.teacher_creator_id}, name={self.name}, description={self.description}, creation_date={self.creation_date}, image_url={self.image_url})'

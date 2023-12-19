@@ -19,6 +19,7 @@ class Student_token(Base):
     student_id: Mapped[int] = mapped_column(ForeignKey('student.id'), primary_key=True)
     token_id: Mapped[int] = mapped_column(ForeignKey('token.id'), primary_key=True)
     teacher_id: Mapped[Optional[int]] = mapped_column(ForeignKey('teacher.id'))
+    value: Mapped[int]
     creation_date: Mapped[datetime.date] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )
@@ -30,4 +31,4 @@ class Student_token(Base):
     given_by: Mapped[Optional["Teacher"]] = relationship(back_populates='tokens_given')
 
     def __repr__(self) -> str:
-        return f'Student_token(student_id={self.student_id}, token_id={self.token_id}, teacher_id={self.teacher_id}, creation_date={self.creation_date})'
+        return f'Student_token(student_id={self.student_id}, token_id={self.token_id}, teacher_id={self.teacher_id}, value={self.value}, creation_date={self.creation_date})'

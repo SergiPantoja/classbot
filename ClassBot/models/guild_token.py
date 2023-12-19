@@ -15,9 +15,10 @@ class Guild_token(Base):
 
     guild_id: Mapped[int] = mapped_column(ForeignKey('guild.id'), primary_key=True)
     token_id: Mapped[int] = mapped_column(ForeignKey('token.id'), primary_key=True)
+    value: Mapped[int]
 
     guild: Mapped["Guild"] = relationship(back_populates="tokens")
     token: Mapped["Token"] = relationship(back_populates="guilds")
 
     def __repr__(self) -> str:
-        return f'guild_token(guild_id={self.guild_id}, token_id={self.token_id})'    
+        return f'Guild_token(guild_id={self.guild_id}, token_id={self.token_id}, value={self.value})' 

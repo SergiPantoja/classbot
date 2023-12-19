@@ -284,33 +284,18 @@ async def manage_pending(update: Update, context: ContextTypes):
     teacher = teacher_sql.get_teacher(user_sql.get_user_by_chatid(update.effective_user.id).id)
 
     if query.data == "pending_approve":
-        # If there is a token created for this pending, ask only for confirmation and a comment
-        # else, ask for value, comment and create token
-        token = token_sql.get_token_by_pending(pending_id)
-        if token:
-            if query.message.text:
-                await query.edit_message_text(
-                    f"Puede enviar un comentario si lo desea. Presione confirmar para aprobar el pendiente.",
-                    reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Confirmar", callback_data="pending_approve_confirm")], [InlineKeyboardButton("Atrás", callback_data="back")]]),
-                )
-            else:
-                await query.edit_message_caption(
-                    f"Puede enviar un comentario si lo desea. Presione confirmar para aprobar el pendiente.",
-                    reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Confirmar", callback_data="pending_approve_confirm")], [InlineKeyboardButton("Atrás", callback_data="back")]]),
-                )
-            return states.T_PENDING_APPROVE
+        # Ask for value and comment, then create a token if it doesn't exist
+        if query.message.text:
+            await query.edit_message_text(
+                f"Ingrese la cantidad de créditos a otorgar por el {pending_type} de {user_sql.get_user(pending.student_id).fullname}. Puede agregar un comentario después de la cantidad de créditos después de un espacio.",
+                reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Atrás", callback_data="back")]]),
+            )
         else:
-            if query.message.text:
-                await query.edit_message_text(
-                    f"Ingrese la cantidad de créditos a otorgar por el {pending_type} de {user_sql.get_user(pending.student_id).fullname}. Puede agregar un comentario después de la cantidad de créditos después de un espacio.",
-                    reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Atrás", callback_data="back")]]),
-                )
-            else:
-                await query.edit_message_caption(
-                    f"Ingrese la cantidad de créditos a otorgar por el {pending_type} de {user_sql.get_user(pending.student_id).fullname}. Puede agregar un comentario después de la cantidad de créditos después de un espacio.",
-                    reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Atrás", callback_data="back")]]),
-                )
-            return states.T_PENDING_APPROVE
+            await query.edit_message_caption(
+                f"Ingrese la cantidad de créditos a otorgar por el {pending_type} de {user_sql.get_user(pending.student_id).fullname}. Puede agregar un comentario después de la cantidad de créditos después de un espacio.",
+                reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Atrás", callback_data="back")]]),
+            )
+        return states.T_PENDING_APPROVE
     
     elif query.data == "pending_reject":
         # asks the teacher for an explanation (optional, reason for rejection)
@@ -444,67 +429,47 @@ async def approve_pending(update: Update, context: ContextTypes):
     token_type = token_type_sql.get_token_type(pending.token_type_id).type
     classroom_id = pending.classroom_id
 
-    if query:
-        # token already exists and no comment provided
-        token = token_sql.get_token_by_pending(pending_id)
-        if token:
-            #TODO: verify that token is not already assigned to student
-            # assign token to student
-            student_token_sql.add_student_token(student_id=pending.student_id, token_id=token.id)
-            logger.info(f"Token {token.id} assigned to student {pending.student_id}")  
-            # change pending status to approved
-            pending_sql.approve_pending(pending_id, user_sql.get_user_by_chatid(update.effective_user.id).id)
-            logger.info(f"Pending {pending_id} approved") 
-            # notify student
-            text = f"El profesor {user_sql.get_user_by_chatid(update.effective_user.id).fullname} ha aprobado tu {token_type}.\n\nTu {token_type}:\n{pending.text}"
-            try:
-                await context.bot.send_message(
-                    chat_id=student_chat_id,
-                    text=text,
-                )
-            except BadRequest:
-                logger.error(f"Error sending message to student {student_name} (chat_id: {student_chat_id})")
-            await query.message.reply_text(
-                text="El pendiente ha sido aprobado.",
-                reply_markup=ReplyKeyboardMarkup(keyboards.TEACHER_MAIN_MENU, one_time_keyboard=True, resize_keyboard=True),
-            )
-            return ConversationHandler.END
-    else:
-        text = update.message.text
-        # get token value and comment
-        try:
-            value = int(text.split(" ")[0])
-            comment = text.split(" ", 1)[1]
-        except:
-            value = int(text)
-            comment = None
+    text = update.message.text
+    # get token value and comment
+    try:
+        value = int(text.split(" ")[0])
+        comment = text.split(" ", 1)[1]
+    except:
+        value = int(text)
+        comment = None
+    
+    token = token_sql.get_token_by_pending(pending_id)
+    if not token:
         # create token
-        token_sql.add_token(name=f"{token_type} de {student_name}", value=value, token_type_id=pending.token_type_id, classroom_id=classroom_id, pending_id=pending_id)
-        logger.info(f"Token {token_type} created for student {student_name} with value {value}")
-        # get token id
-        token = token_sql.get_token_by_pending(pending_id) # should be only one
-        # assign token to student
-        student_token_sql.add_student_token(student_id=pending.student_id, token_id=token.id)
-        logger.info(f"Token {token.id} assigned to student {pending.student_id}")
-        # change pending status to approved
-        pending_sql.approve_pending(pending_id, user_sql.get_user_by_chatid(update.effective_user.id).id)
-        logger.info(f"Pending {pending_id} approved")
-        # notify student
-        text = f"El profesor {user_sql.get_user_by_chatid(update.effective_user.id).fullname} ha aprobado tu {token_type}.\n\nTu {token_type}:\n{pending.text}"
-        if comment:
-            text += f"\n\nComentario:\n{comment}"
-        try:
-            await context.bot.send_message(
-                chat_id=student_chat_id,
-                text=text,
-            )
-        except BadRequest:
-            logger.error(f"Error sending message to student {student_name} (chat_id: {student_chat_id})")
-        await update.message.reply_text(
-            text="El pendiente ha sido aprobado.",
-            reply_markup=ReplyKeyboardMarkup(keyboards.TEACHER_MAIN_MENU, one_time_keyboard=True, resize_keyboard=True),
+        token_sql.add_token(name=f"{token_type} de {student_name}", token_type_id=pending.token_type_id, classroom_id=classroom_id, pending_id=pending_id)
+        logger.info(f"Token {token_type} created")
+
+    # get token id
+    token = token_sql.get_token_by_pending(pending_id) # should be only one
+    # assign token to student
+    student_token_sql.add_student_token(student_id=pending.student_id, token_id=token.id, value=value, teacher_id=user_sql.get_user_by_chatid(update.effective_user.id).id)
+    logger.info(f"Token {token.id} assigned to student {pending.student_id} with value {value}")
+    # change pending status to approved
+    pending_sql.approve_pending(pending_id, user_sql.get_user_by_chatid(update.effective_user.id).id)
+    logger.info(f"Pending {pending_id} approved")
+
+    # notify student
+    text = f"El profesor {user_sql.get_user_by_chatid(update.effective_user.id).fullname} ha aprobado tu {token_type}.\n\nTu {token_type}:\n{pending.text}"
+    if comment:
+        text += f"\n\nComentario:\n{comment}"
+    try:
+        await context.bot.send_message(
+            chat_id=student_chat_id,
+            text=text,
         )
-        return ConversationHandler.END
+    except BadRequest:
+        logger.error(f"Error sending message to student {student_name} (chat_id: {student_chat_id})")
+
+    await update.message.reply_text(
+        text="El pendiente ha sido aprobado.",
+        reply_markup=ReplyKeyboardMarkup(keyboards.TEACHER_MAIN_MENU, one_time_keyboard=True, resize_keyboard=True),
+    )
+    return ConversationHandler.END
 
 async def more_info_pending(update: Update, context: ContextTypes):
     """ Updates the more_info field of the pending to PENDING, adds the message

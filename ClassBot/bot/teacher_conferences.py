@@ -131,7 +131,7 @@ async def teacher_create_conference_file(update: Update, context: ContextTypes):
     other_buttons = [InlineKeyboardButton("Crear conferencia", callback_data="conference_create")]
     query = update.callback_query
     if query:
-        query.answer()
+        await query.answer()
         await query.message.reply_text(
             "Conferencias del aula",
             reply_markup=paginated_keyboard(buttons, context=context, add_back=True, other_buttons=other_buttons)
