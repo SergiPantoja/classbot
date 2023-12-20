@@ -74,7 +74,7 @@ async def select_action(update: Update, context: ContextTypes):
                 "Seleccione el profesor al que desea rectificar",
                 reply_markup=paginated_keyboard(buttons, context=context, add_back=True)
             )
-            return states.S_ACTION_SEND_RECTIFICATION   # paginator works?
+            return states.S_ACTIONS_SEND_RECTIFICATION   # paginator works?
         else:
             await query.edit_message_text(
                 "No hay profesores en esta aula",
@@ -82,13 +82,25 @@ async def select_action(update: Update, context: ContextTypes):
             )
             return states.S_ACTIONS_SELECT_ACTION
     if action == "action_status_phrase":
-        return ConversationHandler.END #todo
+        await query.edit_message_text(
+            "Envíe un mensaje con su nueva frase de estado",
+            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Atrás", callback_data="back")]]),
+        )
+        return states.S_ACTIONS_SEND_STATUS_PHRASE
     if action == "action_diary_update":
         return ConversationHandler.END #todo
     if action == "action_meme":
-        return ConversationHandler.END #todo
+        await query.edit_message_text(
+            "Envíe una imagen con su meme.",
+            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Atrás", callback_data="back")]]),
+        )
+        return states.S_ACTIONS_SEND_MEME
     if action == "action_joke":
-        return ConversationHandler.END #todo
+        await query.edit_message_text(
+            "Envíe un mensaje con su chiste.",
+            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Atrás", callback_data="back")]]),
+        )
+        return states.S_ACTIONS_SEND_JOKE
     if action == "action_misc":
         await query.edit_message_text(
             "Envíe un mensaje con la miscelánea que desea proponer",
@@ -123,7 +135,7 @@ async def send_misc(update: Update, context: ContextTypes):
     
     # notify student that the proposal was sent
     await update.message.reply_text(
-        "Propuesta enviada.",
+        "Miscelánea enviada.",
         reply_markup=ReplyKeyboardMarkup(keyboards.STUDENT_MAIN_MENU, one_time_keyboard=True, resize_keyboard=True)
     )
     return ConversationHandler.END
@@ -165,7 +177,7 @@ async def select_intervention(update: Update, context: ContextTypes):
             "Envíe un mensaje con los detalles de su intervención",
             reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Atrás", callback_data="back")]]),
         )
-        return states.S_ACTION_SEND_INTERVENTION
+        return states.S_ACTIONS_SEND_INTERVENTION
 
     elif query.data.startswith("practic_class#"):
         if "intervention" not in context.user_data:
@@ -196,7 +208,7 @@ async def send_intervention(update: Update, context: ContextTypes):
 
     # notify student that the proposal was sent
     await update.message.reply_text(
-        "Propuesta enviada.",
+        "Intervención enviada.",
         reply_markup=ReplyKeyboardMarkup(keyboards.STUDENT_MAIN_MENU, one_time_keyboard=True, resize_keyboard=True)
     )
     return ConversationHandler.END
@@ -216,7 +228,7 @@ async def send_rectification(update: Update, context: ContextTypes):
             f"Escriba su rectificación al profesor {user_sql.get_user(teacher_id).fullname}",
             reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Atrás", callback_data="back")]]),
         )
-        return states.S_ACTION_SEND_RECTIFICATION
+        return states.S_ACTIONS_SEND_RECTIFICATION
     else:
         # get necessary data
         user = user_sql.get_user_by_chatid(update.effective_user.id)
@@ -246,11 +258,85 @@ async def send_rectification(update: Update, context: ContextTypes):
 
         # notify student that the proposal was sent
         await update.message.reply_text(
-            "Propuesta enviada.",
+            "Rectificación enviada.",
             reply_markup=ReplyKeyboardMarkup(keyboards.STUDENT_MAIN_MENU, one_time_keyboard=True, resize_keyboard=True)
         )
         return ConversationHandler.END
 
+async def send_status_phrase(update: Update, context: ContextTypes):
+    """ Creates a new status phrase pending """
+    # get necessary data
+    user = user_sql.get_user_by_chatid(update.effective_user.id)
+    student = student_sql.get_student(user.id)
+    classroom_id = student.active_classroom_id
+    token_type_id = token_type_sql.get_token_type_by_type("Frase de estado").id
+
+    text = f"{user.fullname} ha cambiado su frase de estado:\n" + f"{update.message.text if update.message.text else ''}" + f"{update.message.caption if update.message.caption else ''}"
+
+    # create pending in database
+    pending_sql.add_pending(student.id, classroom_id, token_type_id, text=text)
+    logger.info(f"New status phrase by {user.fullname}.")
+    #TODO send notification to notification channel of the classroom if it exists
+
+    # notify student that the proposal was sent
+    await update.message.reply_text(
+        "Frase de estado actualizada.",
+        reply_markup=ReplyKeyboardMarkup(keyboards.STUDENT_MAIN_MENU, one_time_keyboard=True, resize_keyboard=True)
+    )
+    return ConversationHandler.END
+
+async def send_meme(update: Update, context: ContextTypes):
+    """ Creates a new meme pending """
+    # get necessary data
+    user = user_sql.get_user_by_chatid(update.effective_user.id)
+    student = student_sql.get_student(user.id)
+    classroom_id = student.active_classroom_id
+    token_type_id = token_type_sql.get_token_type_by_type("Meme").id
+
+    # get file id if exists
+    file = update.message.photo
+    if not file:
+        await update.message.reply_text(
+            "No se ha enviado una imagen",
+            reply_markup=InlineKeyboardMarkup(keyboards.STUDENT_ACTIONS),
+        )
+        return states.S_ACTIONS_SELECT_ACTION
+
+    text = f"{user.fullname} ha enviado un meme:\n" + f"{update.message.caption if update.message.caption else ''}"
+
+    # create pending in database
+    pending_sql.add_pending(student.id, classroom_id, token_type_id, text=text, FileID=file[-1].file_id)
+    logger.info(f"New meme by {user.fullname}.")
+    #TODO send notification to notification channel of the classroom if it exists
+
+    # notify student that the proposal was sent
+    await update.message.reply_text(
+        "Meme enviado.",
+        reply_markup=ReplyKeyboardMarkup(keyboards.STUDENT_MAIN_MENU, one_time_keyboard=True, resize_keyboard=True)
+    )
+    return ConversationHandler.END
+
+async def send_joke(update: Update, context: ContextTypes):
+    """ Creates a new joke pending """
+    # get necessary data
+    user = user_sql.get_user_by_chatid(update.effective_user.id)
+    student = student_sql.get_student(user.id)
+    classroom_id = student.active_classroom_id
+    token_type_id = token_type_sql.get_token_type_by_type("Chiste").id
+
+    text = f"{user.fullname} ha enviado un chiste:\n" + f"{update.message.text if update.message.text else ''}" + f"{update.message.caption if update.message.caption else ''}"
+
+    # create pending in database
+    pending_sql.add_pending(student.id, classroom_id, token_type_id, text=text)
+    logger.info(f"New joke by {user.fullname}.")
+    #TODO send notification to notification channel of the classroom if it exists
+
+    # notify student that the proposal was sent
+    await update.message.reply_text(
+        "Chiste enviado.",
+        reply_markup=ReplyKeyboardMarkup(keyboards.STUDENT_MAIN_MENU, one_time_keyboard=True, resize_keyboard=True)
+    )
+    return ConversationHandler.END
 
 async def student_actions_back(update: Update, context: ContextTypes):
     """Goes back to the student menu"""
@@ -283,12 +369,15 @@ student_actions_conv = ConversationHandler(
             CallbackQueryHandler(select_intervention, pattern=r"^(select_intervention:|conference#|practic_class#)"),
             paginator_handler,
         ],
-        states.S_ACTION_SEND_INTERVENTION: [MessageHandler(filters.TEXT & ~filters.COMMAND, send_intervention)],
-        states.S_ACTION_SEND_RECTIFICATION: [
+        states.S_ACTIONS_SEND_INTERVENTION: [MessageHandler(filters.TEXT & ~filters.COMMAND, send_intervention)],
+        states.S_ACTIONS_SEND_RECTIFICATION: [
             CallbackQueryHandler(send_rectification, pattern=r"^teacher#"),
             MessageHandler(filters.TEXT & ~filters.COMMAND, send_rectification),
             paginator_handler,
         ],
+        states.S_ACTIONS_SEND_STATUS_PHRASE: [MessageHandler(filters.TEXT & ~filters.COMMAND, send_status_phrase)],
+        states.S_ACTIONS_SEND_MEME: [MessageHandler(filters.PHOTO & ~filters.COMMAND, send_meme)],
+        states.S_ACTIONS_SEND_JOKE: [MessageHandler(filters.TEXT & ~filters.COMMAND, send_joke)],
     },
     fallbacks=[
         CallbackQueryHandler(student_actions_back, pattern=r"^back$"),
