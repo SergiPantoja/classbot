@@ -15,7 +15,7 @@ from bot.utils import states, keyboards
 from bot.utils.inline_keyboard_pagination import paginated_keyboard, paginator_handler
 from bot.utils.pagination import Paginator, text_paginator_handler
 from bot.utils.clean_context import clean_student_context
-from sql import user_sql, student_sql, teacher_sql, classroom_sql, course_sql, pending_sql, token_type_sql, teacher_classroom_sql, token_sql, student_token_sql
+from sql import user_sql, student_sql, teacher_sql, classroom_sql, course_sql, pending_sql, token_type_sql, teacher_classroom_sql, token_sql, student_token_sql, conference_sql
 from bot.student_inventory import back_to_student_menu
 
 
@@ -53,7 +53,16 @@ async def select_action(update: Update, context: ContextTypes):
     action = query.data
 
     if action == "action_class_intervention":
-        return ConversationHandler.END #todo
+        await query.edit_message_text(
+            "Seleccione la clase en la que desea intervenir",
+            reply_markup=InlineKeyboardMarkup(
+                [
+                    [InlineKeyboardButton("Conferencias", callback_data="select_intervention:conference"), InlineKeyboardButton("Clases Prácticas", callback_data="select_intervention:practic_class")],
+                    [InlineKeyboardButton("Atrás", callback_data="back")],
+                ]
+            )
+        )
+        return states.S_ACTIONS_SELECT_INTERVENTION
     if action == "action_teacher_correction":
         return ConversationHandler.END #todo
     if action == "action_status_phrase":
@@ -103,6 +112,74 @@ async def send_misc(update: Update, context: ContextTypes):
     )
     return ConversationHandler.END
 
+async def select_intervention(update: Update, context: ContextTypes):
+    """ shows the conferences or the practic classes for the student to select """
+    query = update.callback_query
+    await query.answer()
+
+    if query.data.startswith("select_intervention:"):
+        intervention_type = query.data.split(":")[1]
+        classroom_id = student_sql.get_student(user_sql.get_user_by_chatid(update.effective_user.id).id).active_classroom_id
+
+        if intervention_type == "conference":
+            conferences = conference_sql.get_conferences_by_classroom(classroom_id)
+            buttons = [InlineKeyboardButton(f"{i}. {conference.name} - {datetime.date(conference.date.year, conference.date.month, conference.date.day)}", callback_data=f"conference#{conference.id}") for i, conference in enumerate(conferences, start=1)]
+            await query.edit_message_text(
+                "Seleccione la conferencia en la que desea intervenir",
+                reply_markup=paginated_keyboard(buttons, context=context, add_back=True)
+            )
+            return states.S_ACTIONS_SELECT_INTERVENTION
+
+        elif intervention_type == "practic_class":
+            #TODO
+            pass
+
+    elif query.data.startswith("conference#"):
+        if "intervention" not in context.user_data:
+            context.user_data["intervention"] = {
+                "conference_id": int(query.data.split("#")[1])
+            }
+        await query.edit_message_text(
+            "Envíe un mensaje con los detalles de su intervención",
+            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Atrás", callback_data="back")]]),
+        )
+        return states.S_ACTION_SEND_INTERVENTION
+
+    elif query.data.startswith("practic_class#"):
+        if "intervention" not in context.user_data:
+            context.user_data["intervention"] = {
+                "practic_class_id": int(query.data.split("#")[1])
+            }
+        #TODO
+        pass
+async def send_intervention(update: Update, context: ContextTypes):
+    """ Creates a new intervention pending """
+    # get necessary data
+    user = user_sql.get_user_by_chatid(update.effective_user.id)
+    student = student_sql.get_student(user.id)
+    classroom_id = student.active_classroom_id
+    token_type_id = token_type_sql.get_token_type_by_type("Intervención en clase").id
+
+    if "conference_id" in context.user_data["intervention"]:
+        conference = conference_sql.get_conference(context.user_data["intervention"]["conference_id"])
+        text = f"{user.fullname} ha intervenido en la conferencia {conference.name}:\n" + f"{update.message.text if update.message.text else ''}" + f"{update.message.caption if update.message.caption else ''}"
+    elif "practic_class_id" in context.user_data["intervention"]:
+        #TODO
+        pass
+
+    # create pending in database
+    pending_sql.add_pending(student.id, classroom_id, token_type_id, text=text)
+    logger.info(f"New intervention by {user.fullname}.")
+    #TODO send notification to notification channel of the classroom if it exists
+
+    # notify student that the proposal was sent
+    await update.message.reply_text(
+        "Propuesta enviada.",
+        reply_markup=ReplyKeyboardMarkup(keyboards.STUDENT_MAIN_MENU, one_time_keyboard=True, resize_keyboard=True)
+    )
+    return ConversationHandler.END
+
+
 async def student_actions_back(update: Update, context: ContextTypes):
     """Goes back to the student menu"""
     query = update.callback_query
@@ -129,7 +206,12 @@ student_actions_conv = ConversationHandler(
     entry_points=[MessageHandler(filters.Regex("^Acciones$"), student_actions)],
     states={
         states.S_ACTIONS_SELECT_ACTION: [CallbackQueryHandler(select_action, pattern=r"^action_")],
-        states.S_ACTIONS_SEND_MISC: [MessageHandler((filters.TEXT | filters.PHOTO | filters.Document.ALL | filters.Sticker.ALL) & ~filters.COMMAND, send_misc)],
+        states.S_ACTIONS_SEND_MISC: [MessageHandler((filters.TEXT | filters.PHOTO | filters.Document.ALL) & ~filters.COMMAND, send_misc)],
+        states.S_ACTIONS_SELECT_INTERVENTION: [
+            CallbackQueryHandler(select_intervention, pattern=r"^(select_intervention:|conference#|practic_class#)"),
+            paginator_handler,
+        ],
+        states.S_ACTION_SEND_INTERVENTION: [MessageHandler(filters.TEXT & ~filters.COMMAND, send_intervention)]
     },
     fallbacks=[
         CallbackQueryHandler(student_actions_back, pattern=r"^back$"),

@@ -45,7 +45,7 @@ async def paginator(update: Update, context: ContextTypes) -> None:
     state. This also means it cannot be used as an entry point since it will
     end the conversation."""
     query = update.callback_query
-    query.answer()
+    await query.answer()
 
     page = int(query.data.split("#")[1])
 
