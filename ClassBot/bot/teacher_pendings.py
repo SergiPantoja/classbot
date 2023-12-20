@@ -100,17 +100,17 @@ async def teacher_pendings(update: Update, context: ContextTypes):
             return states.T_PENDING_SELECT
         else:
             if query:
-                await query.message.reply_text(
-                    "No hay pendientes en este momento.",
-                    reply_markup=ReplyKeyboardMarkup(keyboards.TEACHER_MAIN_MENU, one_time_keyboard=True, resize_keyboard=True),
+                await query.edit_message_text(
+                    "No hay pendientes en este momento. Desea ver los pendientes aprobadados anteriormente?",
+                    reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Sí", callback_data="history_pendings")], [InlineKeyboardButton("No", callback_data="back")]])
                 )
             else:
                 await update.message.reply_text(
-                "No hay pendientes en este momento.",
-                reply_markup=ReplyKeyboardMarkup(keyboards.TEACHER_MAIN_MENU, one_time_keyboard=True, resize_keyboard=True),
+                "No hay pendientes en este momento. Desea ver los pendientes aprobadados anteriormente?",
+                reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Sí", callback_data="history_pendings")], [InlineKeyboardButton("No", callback_data="back")]]),
             )
-            return ConversationHandler.END
-
+            return states.T_PENDING_SELECT
+        
 async def teacher_direct_pendings(update: Update, context: ContextTypes):
     """ Shows only the direct pendings of the current teacher in the current classroom."""
     query = update.callback_query
