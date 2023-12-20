@@ -27,7 +27,7 @@ class Pending(Base):
     teacher_id: Mapped[Optional[int]] = mapped_column(ForeignKey('teacher.id', ondelete='SET NULL'))
     guild_id: Mapped[Optional[int]] = mapped_column(ForeignKey('guild.id'))
     status: Mapped[str] = mapped_column(default='pending') # PENDING, APPROVED, REJECTED
-    creation_date: Mapped[datetime.date] = mapped_column(
+    creation_date: Mapped[datetime.datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
         )
     approved_date: Mapped[Optional[datetime.date]] = mapped_column(DateTime(timezone=True))

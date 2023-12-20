@@ -19,6 +19,16 @@ def get_token(pending_id: int) -> Token | None:
             return s.query(Token).filter(Token.id == pending.token_id).first()
         else:
             return None
+        
+def get_pendings_of_student_by_type(student_id: int, classroom_id: int, token_type_id: int) -> list[Pending]:
+    """ Returns a list of pendings of the given student with the given token_type. """
+    with session() as s:
+        return s.query(Pending).filter(Pending.classroom_id == classroom_id, Pending.student_id == student_id, Pending.token_type_id == token_type_id).order_by(Pending.creation_date.desc()).all()
+        
+def get_last_pending_of_student_by_type(student_id: int,  classroom_id: int, token_type_id: int) -> Pending | None:
+    """ Returns the last pending of the given student with the given token_type. None if not found. """
+    with session() as s:
+        return s.query(Pending).filter(Pending.classroom_id == classroom_id, Pending.student_id == student_id, Pending.token_type_id == token_type_id).order_by(Pending.creation_date.desc()).first()
 
 def update_token(pending_id: int, token_id: int) -> None:
     """ Updates the token_id of the pending. """

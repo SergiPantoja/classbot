@@ -241,10 +241,6 @@ async def filter_pendings(update: Update, context: ContextTypes):
         
     #TODO: filter by created token types and show those
 
-
-
-
-
 async def pending_info(update: Update, context: ContextTypes):
     """ Shows information of the selected pending.
     Shows options for approving or rejecting it, or alternatively marking it as
@@ -354,6 +350,59 @@ async def manage_pending(update: Update, context: ContextTypes):
     teacher = teacher_sql.get_teacher(user_sql.get_user_by_chatid(update.effective_user.id).id)
 
     if query.data == "pending_approve":
+        # if pending is a diary update, check how many consecutive days in a row
+        # the diary has been updated and give 10000 value multiplied by the total minutes
+
+        if pending_type == "Actualización de diario":
+            diary_updates = pending_sql.get_pendings_of_student_by_type(pending.student_id, teacher.active_classroom_id, token_type_sql.get_token_type_by_type("Actualización de diario").id)
+            multiplier = 1
+            current_pending_arrived = False
+            # check how many consecutive days in a row the diary has been updated
+            for i in range(len(diary_updates)-1):
+                # start from the current pending in case there is newer ones that have not been approved yet or are rejected
+                if diary_updates[i].id == pending_id:
+                    current_pending_arrived = True
+                if not current_pending_arrived:
+                    continue
+                if (diary_updates[i].creation_date - diary_updates[i+1].creation_date >= datetime.timedelta(days=1)) and (diary_updates[i].creation_date - diary_updates[i+1].creation_date <= datetime.timedelta(days=2)): 
+                    # if one of these updates was rejected then break
+                    if diary_updates[i].status == "REJECTED":
+                        break
+                    multiplier += 1
+                else:
+                    break
+            value = 10000 * multiplier # later teacher can change this value in classroom settings
+            # create token
+            token_sql.add_token(name=f"{pending_type} de {user_sql.get_user(pending.student_id).fullname}", token_type_id=pending.token_type_id, classroom_id=teacher.active_classroom_id)
+            logger.info(f"Token {pending_type} created")
+            # update pending with this token
+            pending_sql.update_token(pending_id, token_sql.get_last_token().id)
+
+            # get token id
+            token = pending_sql.get_token(pending_id)
+            # assign token to student
+            student_token_sql.add_student_token(student_id=pending.student_id, token_id=token.id, value=value, teacher_id=user_sql.get_user_by_chatid(update.effective_user.id).id)
+            logger.info(f"Token {token.id} assigned to student {pending.student_id} with value {value}")
+            # change pending status to approved
+            pending_sql.approve_pending(pending_id, user_sql.get_user_by_chatid(update.effective_user.id).id)
+            logger.info(f"Pending {pending_id} approved")
+
+            # notify student
+            text = f"El profesor {user_sql.get_user_by_chatid(update.effective_user.id).fullname} ha aprobado tu {pending_type}.\n\nTu {pending_type}:\n{pending.text}"
+            try:
+                await context.bot.send_message(
+                    chat_id=user_sql.get_user(pending.student_id).telegram_chatid,
+                    text=text,
+                )
+            except BadRequest:
+                logger.error(f"Error sending message to student {user_sql.get_user(pending.student_id).fullname} (chat_id: {user_sql.get_user(pending.student_id).telegram_chatid})")
+
+            await query.message.reply_text(
+                text="El pendiente ha sido aprobado.",
+                reply_markup=ReplyKeyboardMarkup(keyboards.TEACHER_MAIN_MENU, one_time_keyboard=True, resize_keyboard=True),
+            )
+            return ConversationHandler.END
+
         # Ask for value and comment, then create a token if it doesn't exist
         if query.message.text:
             await query.edit_message_text(

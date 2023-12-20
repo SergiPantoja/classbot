@@ -88,7 +88,36 @@ async def select_action(update: Update, context: ContextTypes):
         )
         return states.S_ACTIONS_SEND_STATUS_PHRASE
     if action == "action_diary_update":
-        return ConversationHandler.END #todo
+        # diary can only be updated once a day
+        # so first check if the student has already updated his diary today
+        student = student_sql.get_student(user_sql.get_user_by_chatid(update.effective_user.id).id)
+        # get the last diary update
+        last_diary_update = pending_sql.get_last_pending_of_student_by_type(student.id, student.active_classroom_id, token_type_sql.get_token_type_by_type("Actualización de diario").id)
+        if last_diary_update:
+            # if the last diary update was less than 1 day ago then don't allow to update again
+            if datetime.datetime.now() - last_diary_update.creation_date < datetime.timedelta(days=1):
+                print(datetime.datetime.now())
+                print(last_diary_update.creation_date)
+                print(datetime.datetime.now() - last_diary_update.creation_date)
+                await query.edit_message_text(
+                    "Ya has actualizado tu diario hoy",
+                    reply_markup=InlineKeyboardMarkup(keyboards.STUDENT_ACTIONS),
+                )
+                return states.S_ACTIONS_SELECT_ACTION
+            # else proceed
+            else:
+                await query.edit_message_text(
+                    "Envíe un mensaje con su actualización de diario",
+                    reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Atrás", callback_data="back")]]),
+                )
+                return states.S_ACTIONS_SEND_DIARY_UPDATE
+        else:
+            # no diary update yet then proceed
+            await query.edit_message_text(
+                "Envíe un mensaje con su actualización de diario",
+                reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Atrás", callback_data="back")]]),
+            )
+            return states.S_ACTIONS_SEND_DIARY_UPDATE   
     if action == "action_meme":
         await query.edit_message_text(
             "Envíe una imagen con su meme.",
@@ -338,6 +367,28 @@ async def send_joke(update: Update, context: ContextTypes):
     )
     return ConversationHandler.END
 
+async def send_diary_update(update: Update, context: ContextTypes):
+    """ Creates a new diary update pending """
+    # get necessary data
+    user = user_sql.get_user_by_chatid(update.effective_user.id)
+    student = student_sql.get_student(user.id)
+    classroom_id = student.active_classroom_id
+    token_type_id = token_type_sql.get_token_type_by_type("Actualización de diario").id
+
+    text = f"{user.fullname} ha actualizado su diario:\n" + f"{update.message.text if update.message.text else ''}" + f"{update.message.caption if update.message.caption else ''}"
+
+    # create pending in database
+    pending_sql.add_pending(student.id, classroom_id, token_type_id, text=text)
+    logger.info(f"New diary update by {user.fullname}.")
+    #TODO send notification to notification channel of the classroom if it exists
+
+    # notify student that the proposal was sent
+    await update.message.reply_text(
+        "Actualización de diario enviada.",
+        reply_markup=ReplyKeyboardMarkup(keyboards.STUDENT_MAIN_MENU, one_time_keyboard=True, resize_keyboard=True)
+    )
+    return ConversationHandler.END
+
 async def student_actions_back(update: Update, context: ContextTypes):
     """Goes back to the student menu"""
     query = update.callback_query
@@ -378,6 +429,7 @@ student_actions_conv = ConversationHandler(
         states.S_ACTIONS_SEND_STATUS_PHRASE: [MessageHandler(filters.TEXT & ~filters.COMMAND, send_status_phrase)],
         states.S_ACTIONS_SEND_MEME: [MessageHandler(filters.PHOTO & ~filters.COMMAND, send_meme)],
         states.S_ACTIONS_SEND_JOKE: [MessageHandler(filters.TEXT & ~filters.COMMAND, send_joke)],
+        states.S_ACTIONS_SEND_DIARY_UPDATE: [MessageHandler(filters.TEXT & ~filters.COMMAND, send_diary_update)],
     },
     fallbacks=[
         CallbackQueryHandler(student_actions_back, pattern=r"^back$"),
