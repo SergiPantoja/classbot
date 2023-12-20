@@ -30,6 +30,18 @@ def create_default_token_types(session):
             s.add(Token_type(type="Miscelaneo", hidden=True))
         if not s.query(Token_type).filter(Token_type.type == "Propuesta de título").first():
             s.add(Token_type(type="Propuesta de título", hidden=True)) 
+        if not s.query(Token_type).filter(Token_type.type == "Intervención en clase").first():
+            s.add(Token_type(type="Intervención en clase", hidden=True))
+        if not s.query(Token_type).filter(Token_type.type == "Rectificación al profesor").first():
+            s.add(Token_type(type="Rectificación al profesor", hidden=True))
+        if not s.query(Token_type).filter(Token_type.type == "Frase de estado").first():
+            s.add(Token_type(type="Frase de estado", hidden=True))
+        if not s.query(Token_type).filter(Token_type.type == "Meme").first():
+            s.add(Token_type(type="Meme", hidden=True))
+        if not s.query(Token_type).filter(Token_type.type == "Chiste").first():
+            s.add(Token_type(type="Chiste", hidden=True))
+        if not s.query(Token_type).filter(Token_type.type == "Actualización de diario").first():
+            s.add(Token_type(type="Actualización de diario", hidden=True))
         s.commit()
         
 

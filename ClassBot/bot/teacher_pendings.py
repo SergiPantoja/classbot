@@ -45,6 +45,8 @@ async def teacher_pendings(update: Update, context: ContextTypes):
             "No tienes permiso para acceder a este comando",
         )
         return ConversationHandler.END
+    
+    context.user_data["pending"] = {"direct": False, "history": False}
 
     teacher = teacher_sql.get_teacher(user_sql.get_user_by_chatid(update.effective_user.id).id)
     classroom_id = teacher.active_classroom_id
@@ -114,6 +116,11 @@ async def teacher_direct_pendings(update: Update, context: ContextTypes):
     query = update.callback_query
     query.answer()
 
+    if not "pending" in context.user_data:
+        context.user_data["pending"] = {"direct": True}
+    else:
+        context.user_data["pending"]["direct"] = True
+
     teacher = teacher_sql.get_teacher(user_sql.get_user_by_chatid(update.effective_user.id).id)
     classroom_id = teacher.active_classroom_id
     # get the list of direct pendings of this classroom that are "PENDING"
@@ -157,9 +164,10 @@ async def pending_history(update: Update, context: ContextTypes):
     # get the list of pendings of this classroom that are "APPROVED" by this teacher
     pendings = pending_sql.get_approved_pendings_of_teacher(teacher.id, classroom_id)
     if pendings:
-        lines = [f"{i}. {token_type_sql.get_token_type(pending.token_type_id).type}: {user_sql.get_user(pending.student_id).fullname} Aprobado el {datetime.date(pending.approved_date.year, pending.approved_date.month, pending.approved_date.day)} con un valor de {token_sql.get_token_by_pending(pending.id).value} -> /pending_{pending.id}" for i, pending in enumerate(pendings, start=1)]
+        lines = [f"{i}. {token_type_sql.get_token_type(pending.token_type_id).type}: {user_sql.get_user(pending.student_id).fullname} Aprobado el {datetime.date(pending.approved_date.year, pending.approved_date.month, pending.approved_date.day)} con un valor de {student_token_sql.get_value(pending.student_id, pending.token_id)} -> /pending_{pending.id}" for i, pending in enumerate(pendings, start=1)]
         # create new paginator using this lines
-        paginator = Paginator(lines, items_per_page=10, text_before="Historial de pendientes que has aprobado:", add_back=True)
+        other_buttons = [InlineKeyboardButton("Todos los pendientes", callback_data="all_pendings")]
+        paginator = Paginator(lines, items_per_page=10, text_before="Historial de pendientes que has aprobado:", add_back=True, other_buttons=other_buttons)
         # save paginator in user_data
         context.user_data["paginator"] = paginator
         # send first page
@@ -174,6 +182,68 @@ async def pending_history(update: Update, context: ContextTypes):
             reply_markup=ReplyKeyboardMarkup(keyboards.TEACHER_MAIN_MENU, one_time_keyboard=True, resize_keyboard=True),
         )
         return ConversationHandler.END
+
+async def filter_pendings(update: Update, context: ContextTypes):
+    """ Filter pendings by token type. Shows all default token types in the classroom
+    and selecting one of them shows only the pendings of the classroom of that type.
+    Selecting "Otras actividades" shows the pendings related to activities created
+    by the teachers (token_types with classroom_id of this classroom)."""
+    query = update.callback_query
+    query.answer()
+
+    teacher = teacher_sql.get_teacher(user_sql.get_user_by_chatid(update.effective_user.id).id)
+    classroom_id = teacher.active_classroom_id
+
+    if query.data == "filter_pendings":
+        # show keyboard with default token types and "Otras actividades"
+        await query.edit_message_text(
+            text="Seleccione un tipo de pendiente para filtrar:",
+            reply_markup=InlineKeyboardMarkup(keyboards.TEACHER_FILTER_PENDING),
+        )
+        return states.T_PENDING_SELECT
+
+    elif query.data == "filter_other_activities":
+        # show keyboard with token types created by teachers
+        pass
+
+    # if query.data starts with "filter_default: " it means the teacher selected a default token type
+    elif query.data.startswith("filter_default:"):
+        # filter by default token type and show those
+        t_type = query.data.split(":")[1]
+        token_type_id = token_type_sql.get_token_type_by_type(t_type).id
+        # get only pendings of this classroom with this token type
+        if context.user_data["pending"]["direct"]:
+            pendings = pending_sql.get_pendings_by_token_type(token_type_id, classroom_id, status="PENDING", direct_pending=teacher.id)
+        else:
+            pendings = pending_sql.get_pendings_by_token_type(token_type_id, classroom_id, status="PENDING")
+            
+        if pendings:
+            # create a list of lines for each pending
+            lines = [f"{i}. {token_type_sql.get_token_type(pending.token_type_id).type}: {user_sql.get_user(pending.student_id).fullname} Fecha: {datetime.date(pending.creation_date.year, pending.creation_date.month, pending.creation_date.day)} -> /pending_{pending.id} {'(Esperando más información)' if pending.more_info == 'PENDING' else ''}{'(Nueva información recibida)' if pending.more_info == 'SENT' else ''}" for i, pending in enumerate(pendings, start=1)]
+            # create new paginator using this lines
+            other_buttons = [InlineKeyboardButton("Todos los pendientes", callback_data="all_pendings"), InlineKeyboardButton("Filtrar", callback_data="filter_pendings"), InlineKeyboardButton("Historial", callback_data="history_pendings")]
+            paginator = Paginator(lines, items_per_page=10, text_before=f'Pendientes de "{t_type}":', add_back=True, other_buttons=other_buttons)
+            # save paginator in user_data
+            context.user_data["paginator"] = paginator
+            # send first page
+            await query.edit_message_text(
+                paginator.text(),
+                reply_markup=paginator.keyboard()
+            )
+            return states.T_PENDING_SELECT
+        else:
+            await query.edit_message_text(
+                text="No hay pendientes de este tipo.",
+                reply_markup=InlineKeyboardMarkup(keyboards.TEACHER_FILTER_PENDING),
+            )
+            return states.T_PENDING_SELECT
+
+        
+    #TODO: filter by created token types and show those
+
+
+
+
 
 async def pending_info(update: Update, context: ContextTypes):
     """ Shows information of the selected pending.
@@ -218,7 +288,7 @@ async def pending_info(update: Update, context: ContextTypes):
         text += f"Texto: {pending.text}\n"
     text += "\nSeleccione una opción:"
 
-    if "history" in context.user_data["pending"]:
+    if context.user_data["pending"]["history"]:
         # if viewing history, only show options to return to history or back to menu
         if pending.FileID:
             try:
@@ -539,7 +609,7 @@ teacher_pendings_conv = ConversationHandler(
             text_paginator_handler,
             CallbackQueryHandler(teacher_direct_pendings, pattern=r"^direct_pendings$"),
             CallbackQueryHandler(teacher_pendings, pattern=r"^all_pendings$"),
-            #CallbackQueryHandler(teacher_pendings, pattern=r"^filter_pendings$"),
+            CallbackQueryHandler(filter_pendings, pattern=r"^filter_"),
             CallbackQueryHandler(pending_history, pattern=r"^history_pendings$"),
             MessageHandler(filters.TEXT & filters.Regex("^/pending_"), pending_info),
         ],

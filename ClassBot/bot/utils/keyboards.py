@@ -74,6 +74,28 @@ TEACHER_PENDING_OPTIONS = [
     ],
     [InlineKeyboardButton("Atrás", callback_data="back")],
 ]
+TEACHER_FILTER_PENDING = [
+    [
+        InlineKeyboardButton("Intervención en clase", callback_data="filter_default:Intervención en clase"),
+        InlineKeyboardButton("Propuesta de título", callback_data="filter_default:Propuesta de título"),
+    ],
+    [
+        InlineKeyboardButton("Rectificación al profesor", callback_data="filter_default:Rectificación al profesor"),
+        InlineKeyboardButton("Frase de estado", callback_data="filter_default:Frase de estado"),
+    ],
+    [
+        InlineKeyboardButton("Meme", callback_data="filter_default:Meme"),
+        InlineKeyboardButton("Chiste", callback_data="filter_default:Chiste"),
+    ],
+    [
+        InlineKeyboardButton("Actualización de diario", callback_data="filter_default:Actualización de diario"),
+        InlineKeyboardButton("Miscelánea", callback_data="filter_default:Miscelaneo"),
+    ],
+    [
+        InlineKeyboardButton("Otras actividades", callback_data="filter_other_activities"),
+        InlineKeyboardButton("Atrás", callback_data="back"),
+    ]
+]
 TEACHER_GUILD = [
     [
         InlineKeyboardButton("Crear gremio", callback_data="create_guild"),
