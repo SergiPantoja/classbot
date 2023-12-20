@@ -64,7 +64,23 @@ async def select_action(update: Update, context: ContextTypes):
         )
         return states.S_ACTIONS_SELECT_INTERVENTION
     if action == "action_teacher_correction":
-        return ConversationHandler.END #todo
+        """ Shows the teachers of the classroom to select """
+        student = student_sql.get_student(user_sql.get_user_by_chatid(update.effective_user.id).id)
+        classroom = classroom_sql.get_classroom(student.active_classroom_id)
+        teacher_ids = teacher_classroom_sql.get_teacher_ids(classroom.id)
+        if teacher_ids:
+            buttons = [InlineKeyboardButton(f"{i}. {user_sql.get_user(teacher_id).fullname}", callback_data=f"teacher#{teacher_id}") for i, teacher_id in enumerate(teacher_ids, start=1)]
+            await query.edit_message_text(
+                "Seleccione el profesor al que desea rectificar",
+                reply_markup=paginated_keyboard(buttons, context=context, add_back=True)
+            )
+            return states.S_ACTION_SEND_RECTIFICATION   # paginator works?
+        else:
+            await query.edit_message_text(
+                "No hay profesores en esta aula",
+                reply_markup=InlineKeyboardMarkup(keyboards.STUDENT_ACTIONS),
+            )
+            return states.S_ACTIONS_SELECT_ACTION
     if action == "action_status_phrase":
         return ConversationHandler.END #todo
     if action == "action_diary_update":
@@ -123,6 +139,12 @@ async def select_intervention(update: Update, context: ContextTypes):
 
         if intervention_type == "conference":
             conferences = conference_sql.get_conferences_by_classroom(classroom_id)
+            if not conferences:
+                await query.edit_message_text(
+                    "No hay conferencias en esta aula",
+                    reply_markup=InlineKeyboardMarkup(keyboards.STUDENT_ACTIONS),
+                )
+                return states.S_ACTIONS_SELECT_ACTION
             buttons = [InlineKeyboardButton(f"{i}. {conference.name} - {datetime.date(conference.date.year, conference.date.month, conference.date.day)}", callback_data=f"conference#{conference.id}") for i, conference in enumerate(conferences, start=1)]
             await query.edit_message_text(
                 "Seleccione la conferencia en la que desea intervenir",
@@ -179,6 +201,56 @@ async def send_intervention(update: Update, context: ContextTypes):
     )
     return ConversationHandler.END
 
+async def send_rectification(update: Update, context: ContextTypes):
+    query = update.callback_query
+    
+    if query:
+        await query.answer()
+        teacher_id = int(query.data.split("#")[1])
+        # save teacher_id in context.user_data
+        if "rectification" not in context.user_data:
+            context.user_data["rectification"] = {
+                "teacher_id": teacher_id
+            }
+        await query.edit_message_text(
+            f"Escriba su rectificación al profesor {user_sql.get_user(teacher_id).fullname}",
+            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Atrás", callback_data="back")]]),
+        )
+        return states.S_ACTION_SEND_RECTIFICATION
+    else:
+        # get necessary data
+        user = user_sql.get_user_by_chatid(update.effective_user.id)
+        student = student_sql.get_student(user.id)
+        classroom_id = student.active_classroom_id
+        token_type_id = token_type_sql.get_token_type_by_type("Rectificación al profesor").id
+        teacher_id = context.user_data["rectification"]["teacher_id"]
+
+        text = f"{user.fullname} ha rectificado al profesor {user_sql.get_user(teacher_id).fullname}:\n" + f"{update.message.text if update.message.text else ''}" + f"{update.message.caption if update.message.caption else ''}"
+
+        # create pending in database
+        pending_sql.add_pending(student.id, classroom_id, token_type_id, teacher_id=teacher_id, text=text)
+        logger.info(f"New rectification by {user.fullname}.")
+        #TODO send notification to notification channel of the classroom if it exists
+
+        # notify this teacher that he has a new rectification in his direct pendings
+        teacher_chat_id = user_sql.get_user(teacher_id).telegram_chatid
+        if teacher_chat_id:
+            try:
+                await context.bot.send_message(
+                    teacher_chat_id,
+                    f"Tienes una nueva rectificación de {user.fullname} en tu lista de pendientes directos",
+                    reply_markup=ReplyKeyboardMarkup(keyboards.TEACHER_MAIN_MENU, one_time_keyboard=True, resize_keyboard=True)
+                )
+            except BadRequest:
+                logger.exception(f"Failed to send message to teacher {teacher_id}.")
+
+        # notify student that the proposal was sent
+        await update.message.reply_text(
+            "Propuesta enviada.",
+            reply_markup=ReplyKeyboardMarkup(keyboards.STUDENT_MAIN_MENU, one_time_keyboard=True, resize_keyboard=True)
+        )
+        return ConversationHandler.END
+
 
 async def student_actions_back(update: Update, context: ContextTypes):
     """Goes back to the student menu"""
@@ -211,7 +283,12 @@ student_actions_conv = ConversationHandler(
             CallbackQueryHandler(select_intervention, pattern=r"^(select_intervention:|conference#|practic_class#)"),
             paginator_handler,
         ],
-        states.S_ACTION_SEND_INTERVENTION: [MessageHandler(filters.TEXT & ~filters.COMMAND, send_intervention)]
+        states.S_ACTION_SEND_INTERVENTION: [MessageHandler(filters.TEXT & ~filters.COMMAND, send_intervention)],
+        states.S_ACTION_SEND_RECTIFICATION: [
+            CallbackQueryHandler(send_rectification, pattern=r"^teacher#"),
+            MessageHandler(filters.TEXT & ~filters.COMMAND, send_rectification),
+            paginator_handler,
+        ],
     },
     fallbacks=[
         CallbackQueryHandler(student_actions_back, pattern=r"^back$"),
