@@ -261,7 +261,7 @@ async def activity_type_selected(update: Update, context: ContextTypes):
                 except BadRequest:
                     await query.edit_message_text("Se ha producido un error al enviar el archivo. Puede intentar editar el tipo de actividad para enviar otro archivo.\n\n" + text, reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton(f"Crear actividad", callback_data=f"create_activity#{activity_type_id}")],] + keyboards.TEACHER_ACTIVITY_TYPE_OPTIONS))
             else:
-                await query.edit_message_text(text, reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton(f"Crear actividad")],] + keyboards.TEACHER_ACTIVITY_TYPE_OPTIONS))
+                await query.edit_message_text(text, reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton(f"Crear actividad", callback_data=f"create_activity#{activity_type_id}")],] + keyboards.TEACHER_ACTIVITY_TYPE_OPTIONS))
     else:
         # doesnt support specific activities, only show the details of this activity_type
         # and allow edition and hiding it
@@ -802,10 +802,33 @@ async def review_activity_send_credits(update: Update, context: ContextTypes):
         )
     else:
         # reviewed_type == "guild"
-        pass
+        guild = guild_sql.get_guild(int(reviewed_id))
+        guild_token_sql.add_guild_token(guild.id, token.id, value, teacher_id=teacher_id)
+        logger.info(f"Guild {guild.id} received {value} credits for activity {token.name} from teacher {update.effective_user.id}")
+        # create approved pending
+        text = f"Créditos otorgados manualmente por el profesor {user_sql.get_user(teacher_id).fullname} al gremio {guild.name} por la actividad {token.name} de {token_type.type}"
+        # since pendings always have a student_id, we use the first student of the guild
+        student_id = student_sql.get_students_by_guild(guild.id)[0].id
+        pending_sql.add_pending(student_id=student_id, classroom_id=classroom_id, token_type_id=token_type.id, token_id=token.id, guild_id=guild.id, status="APPROVED", approved_by=teacher_id, text=text)
+        # notify guild (all students)
+        text = f"El profesor {user_sql.get_user(teacher_id).fullname} ha otorgado {value} créditos al gremio {guild.name} por la actividad {token.name} de {token_type.type}"
+        if comment:
+            text += f"\nComentario: {comment}"
+        for student in student_sql.get_students_by_guild(guild.id):
+            chat_id = user_sql.get_user(student.id).telegram_chatid
+            fullname = user_sql.get_user(student.id).fullname
+            try:
+                await context.bot.send_message(
+                    chat_id=chat_id,
+                    text=text,
+                )
+            except BadRequest:
+                logger.error(f"Error sending message to student {fullname} (chat_id: {chat_id})")
+        await update.message.reply_text(
+            "Créditos otorgados!",
+            reply_markup=ReplyKeyboardMarkup(keyboards.TEACHER_MAIN_MENU, one_time_keyboard=True, resize_keyboard=True),
+        )
     return ConversationHandler.END
-        
-
 
 async def teacher_activities_back(update: Update, context: ContextTypes):
     """Go back to teacher menu"""

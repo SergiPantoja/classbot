@@ -3,6 +3,8 @@ from sqlalchemy import select
 from models.guild_token import Guild_token
 from models.token import Token
 from sql import session
+import sql.student_sql as student_sql
+import sql.student_token_sql as student_token_sql
 
 
 def get_guild_ids(token_id: int) -> list[int]:
@@ -15,10 +17,19 @@ def get_token_ids(guild_id: int) -> list[int]:
     with session() as s:
         return [guild_token.token_id for guild_token in s.query(Guild_token).filter(Guild_token.guild_id == guild_id).all()]
 
-def add_guild_token(guild_id: int, token_id: int, value: int) -> None:
-    """ Adds a new guild_token to the database. Needs to be given to its students?"""
+def add_guild_token(guild_id: int, token_id: int, value: int, teacher_id: int = None) -> None:
+    """ Adds a new guild_token to the database. Needs to be given to its students"""
     with session() as s:
-        s.add(Guild_token(guild_id=guild_id, token_id=token_id, value=value))
+        # add the token to the students of the guild
+        for student in student_sql.get_students_by_guild(guild_id):
+            student_token_sql.add_student_token(student_id=student.id, token_id=token_id, value=value, teacher_id=teacher_id)
+        # add the guild_token to the database
+        s.add(Guild_token(
+            guild_id=guild_id,
+            token_id=token_id,
+            value=value,
+            teacher_id=teacher_id,
+        ))
         s.commit()
 
 def exists(guild_id: int, token_id: int) -> bool:
