@@ -38,3 +38,15 @@ def add_token(
             image_url=image_url,
         ))
         s.commit()
+
+def update_name(id: int, name: str):
+    """ Updates the name of the token with the given id. """
+    with session() as s:
+        s.query(Token).filter(Token.id == id).update({Token.name: name})
+        s.commit()
+
+def update_description(id: int, description: str):
+    """ Updates the description of the token with the given id. """
+    with session() as s:
+        s.query(Token).filter(Token.id == id).update({Token.description: description})
+        s.commit()

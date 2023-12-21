@@ -31,7 +31,12 @@ def paginated_keyboard(buttons: list[InlineKeyboardButton], page: int = 1, conte
 
     # if other buttons are provided, add them here
     if other_buttons:
-        keyboard.append(other_buttons)
+        # add them in pairs of two
+        for i in range(0, len(other_buttons), 2):
+            if i + 1 < len(other_buttons):
+                keyboard.append([other_buttons[i], other_buttons[i + 1]])
+            else:
+                keyboard.append([other_buttons[i]])
 
     # Add back button
     if add_back:

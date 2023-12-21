@@ -47,9 +47,9 @@ def add_activity_type(
     ):
     """ Adds a new activity_type to the database. 
     Creates a new token_type and adds it to the database, then assigns it to the activity_type."""
-    token_type_sql.add_token_type(type, classroom_id, hidden)
-    token_type = token_type_sql.get_token_type_by_type(type, classroom_id)
     with session() as s:
+        token_type_sql.add_token_type(type, classroom_id, hidden)
+        token_type = token_type_sql.get_token_type_by_type(type, classroom_id)
         s.add(Activity_type(
             token_type_id=token_type.id,
             description=description,
