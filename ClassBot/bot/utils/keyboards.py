@@ -116,6 +116,16 @@ TEACHER_GUILD_OPTIONS = [
         InlineKeyboardButton("Atrás", callback_data="back")
     ],
 ]
+TEACHER_ACTIVITY_TYPE_OPTIONS = [
+    [
+        InlineKeyboardButton("Cambiar descripción" , callback_data="activity_type_change_description"),
+        InlineKeyboardButton("Enviar otro archivo", callback_data="activity_type_change_file"),
+    ],
+    [
+        InlineKeyboardButton("Ocultar actividad", callback_data="activity_type_hide"),
+        InlineKeyboardButton("Atrás", callback_data="back")
+    ]
+]
 
 STUDENT_MAIN_MENU = [["Conferencias", "Inventario"], ["Acciones", "Gremio"], ["Opciones", "Actividades 📝"], ["Atrás"]]
 STUDENT_INVENTORY = [["Medallas", "Atrás"]]

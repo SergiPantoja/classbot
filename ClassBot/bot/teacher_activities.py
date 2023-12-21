@@ -208,7 +208,79 @@ async def activity_type_file(update: Update, context: ContextTypes):
     return states.T_ACTIVITIES_CREATE_TYPE
 
 async def activity_type_selected(update: Update, context: ContextTypes):
-    pass
+    """ Shows the details of the activity_type.
+    Allows editing description and FileID, and hiding the activity type.
+    If the activity type allows specific activities (single_submission=True), 
+    then show them if any exist, and allow creating new ones.
+    """
+    query = update.callback_query
+    await query.answer()
+
+    activity_type_id = int(query.data.split("#")[1])
+    activity_type = activity_type_sql.get_activity_type(activity_type_id)
+    token_type = token_type_sql.get_token_type(activity_type.token_type_id)
+
+    if activity_type.single_submission:
+        text = f"Tipo de actividad: {token_type.type}\n" + f"{'Actividad grupal' if activity_type.guild_activity else 'Actividad individual'}\n"
+        if activity_type.description:
+            text += f"Descripción: {activity_type.description}\n"
+        text += "Este tipo de actividad permite crear actividades específicas. Puede crearlas a continuación o acceder a las existentes.\n"
+
+        activities = activity_sql.get_activities_by_activity_type_id(activity_type_id)
+        if activities:
+            # Show activities with pagination.
+            # Add buttons for back and create activity type
+            buttons = [InlineKeyboardButton(f"{i}. {token_sql.get_token(activity.token_id).name}", callback_data=f"activity#{activity.id}") for i, activity in enumerate(activities, start=1)]
+            other_buttons = [
+                InlineKeyboardButton(f"Crear actividad de {token_type_sql.get_token_type(activity_type.token_type_id).type}", callback_data=f"create_activity#{activity_type_id}"),
+                InlineKeyboardButton("Cambiar descripción" , callback_data="activity_type_change_description"),
+                InlineKeyboardButton("Enviar otro archivo", callback_data="activity_type_change_file"),
+                InlineKeyboardButton("Ocultar actividad", callback_data="activity_type_hide"),
+                InlineKeyboardButton("Atrás", callback_data="back")
+            ]
+        
+            if activity_type.FileID:
+                try:
+                    try:
+                        await query.message.reply_photo(activity_type.FileID, caption=text, reply_markup=paginated_keyboard(buttons, context=context, add_back=True, other_buttons=other_buttons))
+                    except BadRequest:
+                        await query.message.reply_document(activity_type.FileID, caption=text, reply_markup=paginated_keyboard(buttons, context=context, add_back=True, other_buttons=other_buttons))
+                except BadRequest:
+                    await query.edit_message_text("Se ha producido un error al enviar el archivo. Puede intentar editar el tipo de actividad para enviar otro archivo.\n\n" + text, reply_markup=paginated_keyboard(buttons, context=context, add_back=True, other_buttons=other_buttons))
+            else:
+                await query.edit_message_text(text, reply_markup=paginated_keyboard(buttons, context=context, add_back=True, other_buttons=other_buttons))
+        else:
+            if activity_type.FileID:
+                try:
+                    try:
+                        await query.message.reply_photo(activity_type.FileID, caption=text, reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton(f"Crear actividad de {token_type_sql.get_token_type(activity_type.token_type_id).type}", callback_data=f"create_activity#{activity_type_id}")],] + keyboards.TEACHER_ACTIVITY_TYPE_OPTIONS))
+                    except BadRequest:
+                        await query.message.reply_document(activity_type.FileID, caption=text, reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton(f"Crear actividad de {token_type_sql.get_token_type(activity_type.token_type_id).type}", callback_data=f"create_activity#{activity_type_id}")],] + keyboards.TEACHER_ACTIVITY_TYPE_OPTIONS))
+                except BadRequest:
+                    await query.edit_message_text("Se ha producido un error al enviar el archivo. Puede intentar editar el tipo de actividad para enviar otro archivo.\n\n" + text, reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton(f"Crear actividad de {token_type_sql.get_token_type(activity_type.token_type_id).type}", callback_data=f"create_activity#{activity_type_id}")],] + keyboards.TEACHER_ACTIVITY_TYPE_OPTIONS))
+            else:
+                await query.edit_message_text(text, reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton(f"Crear actividad de {token_type_sql.get_token_type(activity_type.token_type_id).type}", callback_data=f"create_activity#{activity_type_id}")],] + keyboards.TEACHER_ACTIVITY_TYPE_OPTIONS))
+    else:
+        # doesnt support specific activities, only show the details of this activity_type
+        # and allow edition and hiding it
+        text = f"Actividad: {token_type.type}\n" + f"{'Actividad grupal' if activity_type.guild_activity else 'Actividad individual'}\n"
+        if activity_type.description:
+            text += f"Descripción: {activity_type.description}\n"
+        
+        if activity_type.FileID:
+            try:    
+                try:
+                    await query.message.reply_photo(activity_type.FileID, caption=text, reply_markup=InlineKeyboardMarkup(keyboards.TEACHER_ACTIVITY_TYPE_OPTIONS))
+                except BadRequest:
+                    await query.message.reply_document(activity_type.FileID, caption=text, reply_markup=InlineKeyboardMarkup(keyboards.TEACHER_ACTIVITY_TYPE_OPTIONS))
+            except BadRequest:
+                await query.edit_message_text("Se ha producido un error al enviar el archivo. Puede intentar editar la actividad para enviar otro archivo.\n\n" + text, reply_markup=InlineKeyboardMarkup(keyboards.TEACHER_ACTIVITY_TYPE_OPTIONS))
+        else:
+            await query.edit_message_text(text, reply_markup=InlineKeyboardMarkup(keyboards.TEACHER_ACTIVITY_TYPE_OPTIONS))
+    return states.T_ACTIVITIES_TYPE_INFO
+
+
+
 
 async def teacher_activities_back(update: Update, context: ContextTypes):
     """Go back to teacher menu"""
@@ -254,6 +326,9 @@ teacher_activities_conv = ConversationHandler(
             MessageHandler(filters.Document.ALL | filters.PHOTO, activity_type_file),
             CallbackQueryHandler(activity_type_file, pattern=r"^continue$"),
             ],
+        states.T_ACTIVITIES_TYPE_INFO: [
+            paginator_handler,
+        ]
     },
     fallbacks=[
         CallbackQueryHandler(teacher_activities_back, pattern="back"),
