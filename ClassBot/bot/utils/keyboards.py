@@ -126,6 +126,22 @@ TEACHER_ACTIVITY_TYPE_OPTIONS = [
         InlineKeyboardButton("Atrás", callback_data="back")
     ]
 ]
+TEACHER_ACTIVITY_OPTIONS =[
+    [
+        InlineKeyboardButton("Revisar actividad", callback_data="activity_review"),
+    ],
+    [
+        InlineKeyboardButton("Cambiar nombre", callback_data="activity_change_name"),
+        InlineKeyboardButton("Cambiar descripción", callback_data="activity_change_description"),
+    ],
+    [
+        InlineKeyboardButton("Enviar otro archivo", callback_data="activity_change_file"),
+        InlineKeyboardButton("Cambiar fecha de entrega", callback_data="activity_change_deadline"),
+    ],
+    [
+        InlineKeyboardButton("Atrás", callback_data="back"),
+    ],
+]
 
 STUDENT_MAIN_MENU = [["Conferencias", "Inventario"], ["Acciones", "Gremio"], ["Opciones", "Actividades 📝"], ["Atrás"]]
 STUDENT_INVENTORY = [["Medallas", "Atrás"]]

@@ -285,7 +285,7 @@ async def activity_type_edit_description(update: Update, context: ContextTypes):
     query = update.callback_query
     await query.answer()
 
-    if activity_type_sql.get_activity_type(context.user_data['activity']['activity_type_id']).FileID:
+    if query.message.caption:
         await query.edit_message_caption(
             "Ingrese una nueva descripción para esta actividad",
             reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Atrás", callback_data="back")]])
@@ -312,7 +312,7 @@ async def activity_type_edit_file(update: Update, context: ContextTypes):
     query = update.callback_query
     await query.answer()
 
-    if activity_type_sql.get_activity_type(context.user_data['activity']['activity_type_id']).FileID:
+    if query.message.caption:
         await query.edit_message_caption(
             "Envíe un nuevo archivo para esta actividad",
             reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Atrás", callback_data="back")]])
@@ -512,8 +512,170 @@ async def activity_deadline(update: Update, context: ContextTypes):
     return states.T_ACTIVITIES_TYPE_INFO
 
 async def activity_selected(update: Update, context: ContextTypes):
-    pass
+    """ Shows the details of the activity selected. 
+    Allows editing name (token name), description (token description), 
+    fileID and deadline.
+    Also allows manually adding credits to students or guilds. Even if the 
+    deadline has passed.
+    """
+    query = update.callback_query
+    await query.answer()
 
+    activity_id = int(query.data.split("#")[1])
+    # Save activity id in context
+    context.user_data['activity']['activity_id'] = activity_id
+
+    activity = activity_sql.get_activity(activity_id)
+    token = token_sql.get_token(activity.token_id)
+    activity_type = activity_type_sql.get_activity_type(activity.activity_type_id)
+    token_type = token_type_sql.get_token_type(activity_type.token_type_id)
+
+    text = f"Actividad: {token.name} de {token_type.type}\n" + f"{'Actividad grupal' if activity_type.guild_activity else 'Actividad individual'}\n"
+    if token.description:
+        text += f"Descripción: {token.description}\n"
+    if activity.submission_deadline:
+        text += f"Fecha límite: {activity.submission_deadline.strftime('%d-%m-%Y')}\n"
+    
+    if activity.FileID:
+        try:
+            try:
+                await query.message.reply_photo(activity.FileID, caption=text, reply_markup=InlineKeyboardMarkup(keyboards.TEACHER_ACTIVITY_OPTIONS))
+            except BadRequest:
+                await query.message.reply_document(activity.FileID, caption=text, reply_markup=InlineKeyboardMarkup(keyboards.TEACHER_ACTIVITY_OPTIONS))
+        except BadRequest:
+            await query.edit_message_text("Se ha producido un error al enviar el archivo. Puede intentar editar la actividad para enviar otro archivo.\n\n" + text, reply_markup=InlineKeyboardMarkup(keyboards.TEACHER_ACTIVITY_OPTIONS))
+    else:
+        if query.message.caption:
+            await query.edit_message_caption(text, reply_markup=InlineKeyboardMarkup(keyboards.TEACHER_ACTIVITY_OPTIONS))
+        else:
+            await query.edit_message_text(text, reply_markup=InlineKeyboardMarkup(keyboards.TEACHER_ACTIVITY_OPTIONS))
+
+    return states.T_ACTIVITY_INFO
+async def activity_edit_name(update: Update, context: ContextTypes):
+    """ Asks the user for a new name """
+    query = update.callback_query
+    await query.answer()
+
+    if query.message.caption:
+        await query.edit_message_caption(
+            "Ingrese el nuevo nombre de la actividad",
+            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Atrás", callback_data="back")]])
+        )
+    else:
+        await query.edit_message_text(
+            "Ingrese el nuevo nombre de la actividad",
+            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Atrás", callback_data="back")]])
+        )
+    return states.T_ACTIVITY_EDIT_NAME
+async def activity_edit_name_done(update: Update, context: ContextTypes):
+    activity_id = context.user_data['activity']['activity_id']
+    new_name = update.message.text
+    activity_sql.update_name(activity_id, new_name)
+    logger.info(f"Activity {activity_id} name updated by {update.effective_user.id}")
+    await update.message.reply_text(
+        "Nombre actualizado!",
+        reply_markup=ReplyKeyboardMarkup(keyboards.TEACHER_MAIN_MENU, one_time_keyboard=True, resize_keyboard=True),
+    )
+    return ConversationHandler.END
+async def activity_edit_description(update: Update, context: ContextTypes):
+    """ Asks the user for a new description """
+    query = update.callback_query
+    await query.answer()
+
+    if query.message.caption:
+        await query.edit_message_caption(
+            "Ingrese la nueva descripción de la actividad",
+            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Atrás", callback_data="back")]])
+        )
+    else:
+        await query.edit_message_text(
+            "Ingrese la nueva descripción de la actividad",
+            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Atrás", callback_data="back")]])
+        )
+    return states.T_ACTIVITY_EDIT_DESCRIPTION
+async def activity_edit_description_done(update: Update, context: ContextTypes):
+    """ Updates the activity with the new description """
+    activity_id = context.user_data['activity']['activity_id']
+    new_description = update.message.text
+    activity_sql.update_description(activity_id, new_description)
+    logger.info(f"Activity {activity_id} description updated by {update.effective_user.id}")
+    await update.message.reply_text(
+        "Descripción actualizada!",
+        reply_markup=ReplyKeyboardMarkup(keyboards.TEACHER_MAIN_MENU, one_time_keyboard=True, resize_keyboard=True),
+    )
+    return ConversationHandler.END
+async def activity_edit_file(update: Update, context: ContextTypes):
+    """ Asks the user to send a new file """
+    query = update.callback_query
+    await query.answer()
+
+    if query.message.caption:
+        await query.edit_message_caption(
+            "Envíe un nuevo archivo para esta actividad",
+            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Atrás", callback_data="back")]])
+        )
+    else:
+        await query.edit_message_text(
+            "Envíe un nuevo archivo para esta actividad",
+            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Atrás", callback_data="back")]])
+        )
+    return states.T_ACTIVITY_EDIT_FILE
+async def activity_edit_file_done(update: Update, context: ContextTypes):
+    """ Updates the activity with the new file id """
+    activity_id = context.user_data['activity']['activity_id']
+    file = update.message.document or update.message.photo
+    fid = None
+    if file:
+        if update.message.document:
+            fid = file.file_id
+        else:
+            fid = file[-1].file_id
+    activity_sql.update_file(activity_id, fid)
+    logger.info(f"Activity {activity_id} file updated by {update.effective_user.id}")
+    await update.message.reply_text(
+        "Archivo actualizado!",
+        reply_markup=ReplyKeyboardMarkup(keyboards.TEACHER_MAIN_MENU, one_time_keyboard=True, resize_keyboard=True),
+    )
+    return ConversationHandler.END
+async def activity_edit_deadline(update: Update, context: ContextTypes):
+    """ Asks the user for a new deadline """
+    query = update.callback_query
+    await query.answer()
+
+    if query.message.caption:
+        await query.edit_message_caption(
+            "Ingrese la nueva fecha límite de la actividad en formato dd-mm-aaaa",
+            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Atrás", callback_data="back")]])
+        )
+    else:
+        await query.edit_message_text(
+            "Ingrese la nueva fecha límite de la actividad en formato dd-mm-aaaa",
+            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Atrás", callback_data="back")]])
+        )
+    return states.T_ACTIVITY_EDIT_DEADLINE
+async def activity_edit_deadline_done(update: Update, context: ContextTypes):
+    """ Updates the activity with the new deadline """
+    date_str = update.message.text
+    try:
+        date = datetime.datetime.strptime(date_str, "%d-%m-%Y")
+    except ValueError:
+        await update.message.reply_text(
+            "Formato de fecha inválido. Ingrese la fecha límite en formato dd-mm-aaaa",
+            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Atrás", callback_data="back")]])
+        )
+        return states.T_ACTIVITY_EDIT_DEADLINE
+    
+    activity_id = context.user_data['activity']['activity_id']
+    activity_sql.update_deadline(activity_id, date)
+    logger.info(f"Activity {activity_id} deadline updated by {update.effective_user.id}")
+    await update.message.reply_text(
+        "Fecha límite actualizada!",
+        reply_markup=ReplyKeyboardMarkup(keyboards.TEACHER_MAIN_MENU, one_time_keyboard=True, resize_keyboard=True),
+    )
+    return ConversationHandler.END
+
+async def review_activity(update: Update, context: ContextTypes):
+    pass
 
 
 async def teacher_activities_back(update: Update, context: ContextTypes):
@@ -585,6 +747,18 @@ teacher_activities_conv = ConversationHandler(
             MessageHandler((filters.Regex(r"^\d{2}-\d{2}-\d{4}$") & filters.TEXT) & ~filters.COMMAND, activity_deadline),
             CallbackQueryHandler(activity_deadline, pattern=r"^continue$"),
             ],
+
+        states.T_ACTIVITY_INFO: [
+            CallbackQueryHandler(review_activity, pattern=r"^activity_review$"),
+            CallbackQueryHandler(activity_edit_name, pattern=r"^activity_change_name$"),
+            CallbackQueryHandler(activity_edit_description, pattern=r"^activity_change_description$"),
+            CallbackQueryHandler(activity_edit_file, pattern=r"^activity_change_file$"),
+            CallbackQueryHandler(activity_edit_deadline, pattern=r"^activity_change_deadline$"),
+        ],
+        states.T_ACTIVITY_EDIT_NAME: [MessageHandler(filters.TEXT & ~filters.COMMAND, activity_edit_name_done)],
+        states.T_ACTIVITY_EDIT_DESCRIPTION: [MessageHandler(filters.TEXT & ~filters.COMMAND, activity_edit_description_done)],
+        states.T_ACTIVITY_EDIT_FILE: [MessageHandler(filters.Document.ALL | filters.PHOTO, activity_edit_file_done)],
+        states.T_ACTIVITY_EDIT_DEADLINE: [MessageHandler((filters.Regex(r"^\d{2}-\d{2}-\d{4}$") & filters.TEXT) & ~filters.COMMAND, activity_edit_deadline_done)],
     },
     fallbacks=[
         CallbackQueryHandler(teacher_activities_back, pattern="back"),
