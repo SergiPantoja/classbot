@@ -1,6 +1,7 @@
+import datetime
 from typing import TYPE_CHECKING, Optional, List
 
-from sqlalchemy import ForeignKey, UniqueConstraint
+from sqlalchemy import ForeignKey, UniqueConstraint, DateTime
 from sqlalchemy.orm import mapped_column, Mapped, relationship
 
 from models.base import Base
@@ -17,6 +18,7 @@ class Activity(Base):
     activity_type_id: Mapped[int] = mapped_column(ForeignKey('activity_type.id'))
     token_id: Mapped[int] = mapped_column(ForeignKey('token.id'))
     FileID: Mapped[Optional[str]] = mapped_column()
+    submission_deadline: Mapped[Optional[datetime.date]] = mapped_column(DateTime(timezone=True), default=None)
 
     # many-to-one relationship with activity_type 
     activity_type: Mapped["Activity_type"] = relationship(back_populates='activity')

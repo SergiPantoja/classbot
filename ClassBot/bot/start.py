@@ -14,6 +14,7 @@ from bot.teacher_settings import edit_course_conv, edit_classroom_conv
 from bot.teacher_conferences import teacher_conferences_conv
 from bot.teacher_pendings import teacher_pendings_conv
 from bot.teacher_guilds import teacher_guilds_conv
+from bot.teacher_activities import teacher_activities_conv
 from bot.student_inventory import student_inventory_handler, inv_medal_conv
 from bot.student_conferences import student_conferences_conv
 from bot.student_notifications import student_answer_pending_conv
@@ -73,6 +74,7 @@ def _add_handlers(app):
     app.add_handler(teacher_conferences_conv)
     app.add_handler(teacher_pendings_conv)
     app.add_handler(teacher_guilds_conv)
+    app.add_handler(teacher_activities_conv)
 
     app.add_handler(inv_medal_conv)
     app.add_handler(student_conferences_conv)

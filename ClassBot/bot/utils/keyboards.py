@@ -7,7 +7,7 @@ SELECT_ROLE = [["Estudiante", "Profesor"]]
 TEACHER_LOGIN = [["Ingresar al aula", "Crear"]]
 TEACHER_CREATE = [["Crear curso", "Crear aula"]]
 
-TEACHER_MAIN_MENU = [["Conferencias del aula", "Opciones"], ["Pendientes", "Gremios"], ["Atrás"]]
+TEACHER_MAIN_MENU = [["Conferencias del aula", "Opciones"], ["Pendientes", "Gremios"], ["Actividades 📖", "Atrás"]]
 TEACHER_SETTINGS = [["Editar curso", "Editar aula"], ["Atrás", "Salir"]]
 TEACHER_EDIT_COURSE = [
     [
@@ -117,7 +117,7 @@ TEACHER_GUILD_OPTIONS = [
     ],
 ]
 
-STUDENT_MAIN_MENU = [["Conferencias", "Inventario"], ["Acciones", "Gremio"], ["Opciones", "Atrás"]]
+STUDENT_MAIN_MENU = [["Conferencias", "Inventario"], ["Acciones", "Gremio"], ["Opciones", "Actividades 📝"], ["Atrás"]]
 STUDENT_INVENTORY = [["Medallas", "Atrás"]]
 STUDENT_CONFERENCE_SELECTED = [
     [
