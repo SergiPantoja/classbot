@@ -676,7 +676,7 @@ teacher_pendings_conv = ConversationHandler(
         ],
         states.T_PENDING_APPROVE: [
             CallbackQueryHandler(approve_pending, pattern=r"^pending_approve_confirm$"),
-            MessageHandler(filters.TEXT & ~filters.COMMAND, approve_pending),
+            MessageHandler(filters.Regex(r"^\d+(\s.*)?") & ~filters.COMMAND, approve_pending),
         ],
         states.T_PENDING_MORE_INFO: [
             MessageHandler((filters.TEXT | filters.PHOTO | filters.Document.ALL) & ~filters.COMMAND, more_info_pending),

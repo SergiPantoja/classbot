@@ -16,7 +16,7 @@ from bot.utils import states, keyboards
 from bot.utils.inline_keyboard_pagination import paginated_keyboard, paginator_handler
 from bot.utils.pagination import Paginator, text_paginator_handler
 from bot.utils.clean_context import clean_teacher_context
-from sql import user_sql, teacher_sql, classroom_sql, course_sql, pending_sql, token_type_sql, teacher_classroom_sql, token_sql, student_token_sql, guild_sql, activity_type_sql, activity_sql
+from sql import user_sql, teacher_sql, classroom_sql, course_sql, pending_sql, token_type_sql, student_sql, guild_token_sql, token_sql, student_token_sql, guild_sql, activity_type_sql, activity_sql
 from bot.teacher_settings import back_to_teacher_menu
 
 
@@ -675,7 +675,136 @@ async def activity_edit_deadline_done(update: Update, context: ContextTypes):
     return ConversationHandler.END
 
 async def review_activity(update: Update, context: ContextTypes):
-    pass
+    """ The teacher can manually add credits to students or guilds, even if the deadline has passed
+        Depending on the guild_activity value, the teacher can add credits to a student or a guild,
+        all students/guilds of the classroom that don't have the token of this activity assigned yet,
+        are shown with pagination for the teacher to select.
+    """  
+    query = update.callback_query
+    await query.answer()
+
+    # get activity info from db
+    activity_id = context.user_data['activity']['activity_id']
+    activity = activity_sql.get_activity(activity_id)
+    activity_type = activity_type_sql.get_activity_type(activity.activity_type_id)
+    token = token_sql.get_token(activity.token_id)
+
+    # get students/guilds that dont have the token of this activity assigned yet
+    if activity_type.guild_activity:
+        guilds = guild_sql.get_guilds_by_classroom(token.classroom_id)
+        guilds = [guild for guild in guilds if not guild_token_sql.exists(guild.id, token.id)]
+        if not guilds:
+            if query.message.caption:
+                await query.edit_message_caption(
+                    "Todos los gremios del aula ya han recibido créditos por esta actividad.",
+                    reply_markup=InlineKeyboardMarkup(keyboards.TEACHER_ACTIVITY_OPTIONS),
+                )
+            else:
+                await query.edit_message_text(
+                    "Todos los gremios del aula ya han recibido créditos por esta actividad.",
+                    reply_markup=InlineKeyboardMarkup(keyboards.TEACHER_ACTIVITY_OPTIONS),
+                )
+            return states.T_ACTIVITY_INFO
+        buttons = [InlineKeyboardButton(f"{i}. {guild.name}", callback_data=f"guild#{guild.id}") for i, guild in enumerate(guilds, start=1)]
+        text = "Seleccione el gremio:"
+    else:
+        students = student_sql.get_students_by_classroom(token.classroom_id)
+        students = [student for student in students if not student_token_sql.exists(student.id, token.id)]
+        if not students:
+            if query.message.caption:
+                await query.edit_message_caption(
+                    "Todos los estudiantes del aula ya han recibido créditos por esta actividad.",
+                    reply_markup=InlineKeyboardMarkup(keyboards.TEACHER_ACTIVITY_OPTIONS),
+                )
+            else:
+                await query.edit_message_text(
+                    "Todos los estudiantes del aula ya han recibido créditos por esta actividad.",
+                    reply_markup=InlineKeyboardMarkup(keyboards.TEACHER_ACTIVITY_OPTIONS),
+                )
+            return states.T_ACTIVITY_INFO
+        buttons = [InlineKeyboardButton(f"{i}. {user_sql.get_user(student.id).fullname}", callback_data=f"student#{student.id}") for i, student in enumerate(students, start=1)]
+        text = "Seleccione el estudiante:"
+    
+    if query.message.caption:
+        await query.edit_message_caption(
+            text,
+            reply_markup=paginated_keyboard(buttons, context=context, add_back=True),
+        )
+    else:
+        await query.edit_message_text(
+            text,
+            reply_markup=paginated_keyboard(buttons, context=context, add_back=True),
+        )
+    return states.T_ACTIVITY_REVIEW_SELECT_REVIEWED
+async def review_activity_select_reviewed(update: Update, context: ContextTypes):
+    """ Saves the student/guild id and asks for the amount of credits to add and
+        an optional comment.
+    """
+    query = update.callback_query
+    await query.answer()
+
+    context.user_data["activity"]["reviewed_type"], context.user_data["activity"]["reviewed_id"] = query.data.split("#")
+
+    if query.message.caption:
+        await query.edit_message_caption(
+            "Ingrese la cantidad de créditos a otorgar, puede agregar un comentario después de un espacio.",
+            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Atrás", callback_data="back")]]),
+        )
+    else:
+        await query.edit_message_text(
+            "Ingrese la cantidad de créditos a otorgar, puede agregar un comentario después de un espacio.",
+            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Atrás", callback_data="back")]])
+        )
+    return states.T_ACTIVITY_REVIEW_SEND_CREDITS
+async def review_activity_send_credits(update: Update, context: ContextTypes):
+    """ Assigns the credits (token of this activity) to the student/guild. 
+        Notifies the student or the students of the guild.
+        Creates a pending (approved by teacher) transaction just to keep track of it
+        and the teacher can see it in the approved pendings history.
+    """
+    text = update.message.text
+    # get token value and comment
+    try:
+        value = int(text.split(" ")[0])
+        comment = text.split(" ", 1)[1]
+    except:
+        value = int(text)
+        comment = None
+
+    reviewed_type = context.user_data["activity"]["reviewed_type"]
+    reviewed_id = context.user_data["activity"]["reviewed_id"]
+    token = token_sql.get_token(activity_sql.get_activity(context.user_data["activity"]["activity_id"]).token_id)
+    token_type = token_type_sql.get_token_type(token.token_type_id)
+    classroom_id = token.classroom_id
+    teacher_id = user_sql.get_user_by_chatid(update.effective_user.id).id
+
+    if reviewed_type == "student":
+        student = student_sql.get_student(int(reviewed_id))
+        student_token_sql.add_student_token(student.id, token.id, value, teacher_id=teacher_id)
+        logger.info(f"Student {student.id} received {value} credits for activity {token.name} from teacher {update.effective_user.id}")
+        # create approved pending
+        text = f"Créditos otorgados manualmente por el profesor {user_sql.get_user(teacher_id).fullname} al estudiante {user_sql.get_user(student.id).fullname} por la actividad {token.name} de {token_type.type}"
+        pending_sql.add_pending(student_id=student.id, classroom_id=classroom_id, token_type_id=token_type.id, token_id=token.id, status="APPROVED", approved_by=teacher_id, text=text)
+        # notify student
+        text = f"El profesor {user_sql.get_user(teacher_id).fullname} te ha otorgado {value} créditos por la actividad {token.name} de {token_type.type}"
+        if comment:
+            text += f"\nComentario: {comment}"
+        try:
+            await context.bot.send_message(
+                chat_id=user_sql.get_user(student.id).telegram_chatid,
+                text=text,
+            )
+        except BadRequest:
+            logger.error(f"Error sending message to student {user_sql.get_user(student.id).fullname} (chat_id: {user_sql.get_user(student.id).telegram_chatid})")
+        await update.message.reply_text(
+            "Créditos otorgados!",
+            reply_markup=ReplyKeyboardMarkup(keyboards.TEACHER_MAIN_MENU, one_time_keyboard=True, resize_keyboard=True),
+        )
+    else:
+        # reviewed_type == "guild"
+        pass
+    return ConversationHandler.END
+        
 
 
 async def teacher_activities_back(update: Update, context: ContextTypes):
@@ -759,6 +888,12 @@ teacher_activities_conv = ConversationHandler(
         states.T_ACTIVITY_EDIT_DESCRIPTION: [MessageHandler(filters.TEXT & ~filters.COMMAND, activity_edit_description_done)],
         states.T_ACTIVITY_EDIT_FILE: [MessageHandler(filters.Document.ALL | filters.PHOTO, activity_edit_file_done)],
         states.T_ACTIVITY_EDIT_DEADLINE: [MessageHandler((filters.Regex(r"^\d{2}-\d{2}-\d{4}$") & filters.TEXT) & ~filters.COMMAND, activity_edit_deadline_done)],
+
+        states.T_ACTIVITY_REVIEW_SELECT_REVIEWED: [
+            CallbackQueryHandler(review_activity_select_reviewed, pattern=r"^(student|guild)#"),
+            paginator_handler,
+        ],
+        states.T_ACTIVITY_REVIEW_SEND_CREDITS: [MessageHandler(filters.Regex(r"^\d+(\s.*)?") & ~filters.COMMAND, review_activity_send_credits)],
     },
     fallbacks=[
         CallbackQueryHandler(teacher_activities_back, pattern="back"),

@@ -121,10 +121,13 @@ def get_pendings_by_guild(guild_id: int, classroom_id: int, status: str = None, 
             return s.query(Pending).filter(Pending.classroom_id == classroom_id, Pending.guild_id == guild_id, Pending.teacher_id == direct_pending).order_by(Pending.creation_date.desc()).all()
 
 
-def add_pending(student_id: int, classroom_id: int, token_type_id: int, token_id: int = None, teacher_id: int = None, guild_id: int = None, status: str = "PENDING", text: str = None, FileID: str = None) -> None:
+def add_pending(student_id: int, classroom_id: int, token_type_id: int, token_id: int = None, teacher_id: int = None, guild_id: int = None, status: str = "PENDING", approved_by: int = None, text: str = None, FileID: str = None) -> None:
     """ Adds a new pending to the database. """
     with session() as s:
-        s.add(Pending(student_id=student_id, classroom_id=classroom_id, token_type_id=token_type_id, token_id=token_id, teacher_id=teacher_id, guild_id=guild_id, status=status, text=text, FileID=FileID))
+        if status == "APPROVED":
+            s.add(Pending(student_id=student_id, classroom_id=classroom_id, token_type_id=token_type_id, token_id=token_id, teacher_id=teacher_id, guild_id=guild_id, status=status, approved_by=approved_by, approved_date=func.now(), text=text, FileID=FileID))
+        else:
+            s.add(Pending(student_id=student_id, classroom_id=classroom_id, token_type_id=token_type_id, token_id=token_id, teacher_id=teacher_id, guild_id=guild_id, status=status, text=text, FileID=FileID))
         s.commit()
 
 def approve_pending(pending_id: int, approved_by: int) -> None:

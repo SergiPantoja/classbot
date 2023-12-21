@@ -16,7 +16,7 @@ def get_token_ids(guild_id: int) -> list[int]:
         return [guild_token.token_id for guild_token in s.query(Guild_token).filter(Guild_token.guild_id == guild_id).all()]
 
 def add_guild_token(guild_id: int, token_id: int, value: int) -> None:
-    """ Adds a new guild_token to the database. """
+    """ Adds a new guild_token to the database. Needs to be given to its students?"""
     with session() as s:
         s.add(Guild_token(guild_id=guild_id, token_id=token_id, value=value))
         s.commit()
