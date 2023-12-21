@@ -25,13 +25,16 @@ def get_token_types(classroom_id: int = None, include_hidden: bool = False) -> l
         else:
             return s.query(Token_type).filter(Token_type.classroom_id == classroom_id, Token_type.hidden == False).all()
 
-def switch_hidden_status(id: int) -> None:
-    """ Switches the hidden status of the token_type with the given id. """
-    token_type = get_token_type(id)
-    if token_type is None:
-        return
+def hide_token_type(id: int) -> None:
+    """ Hides a token_type from the database. """
     with session() as s:
-        token_type.hidden = not token_type.hidden
+        s.query(Token_type).filter(Token_type.id == id).update({Token_type.hidden: True})
+        s.commit()
+
+def unhide_token_type(id: int) -> None:
+    """ Unhides a token_type from the database. """
+    with session() as s:
+        s.query(Token_type).filter(Token_type.id == id).update({Token_type.hidden: False})
         s.commit()
 
 def add_token_type(type: str, classroom_id: int = None, hidden: bool = False) -> None:

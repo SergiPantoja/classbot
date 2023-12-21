@@ -58,4 +58,31 @@ def add_activity_type(
             FileID=FileID,
         ))
         s.commit()
-    
+
+def update_description(id: int, description: str):
+    """ Updates the description of the activity_type with the given id."""
+    with session() as s:
+        activity_type = s.query(Activity_type).filter(Activity_type.id == id).first()
+        activity_type.description = description
+        s.commit()
+
+def update_file(id: int, FileID: str):
+    """ Updates the FileID of the activity_type with the given id."""
+    with session() as s:
+        activity_type = s.query(Activity_type).filter(Activity_type.id == id).first()
+        activity_type.FileID = FileID
+        s.commit()
+
+def hide_activity_type(id: int):
+    """ Hides the token_type associated with the activity_type with the given id."""
+    with session() as s:
+        activity_type = s.query(Activity_type).filter(Activity_type.id == id).first()
+        token_type_sql.hide_token_type(activity_type.token_type_id)
+        s.commit()
+
+def unhide_activity_type(id: int):
+    """ Unhides the token_type associated with the activity_type with the given id."""
+    with session() as s:
+        activity_type = s.query(Activity_type).filter(Activity_type.id == id).first()
+        token_type_sql.unhide_token_type(activity_type.token_type_id)
+        s.commit()

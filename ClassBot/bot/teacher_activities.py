@@ -93,7 +93,7 @@ async def activity_type_name(update: Update, context: ContextTypes):
     activity_token_type = token_type_sql.get_token_type_by_type(context.user_data["activity"]["type"], teacher_sql.get_teacher(user_sql.get_user_by_chatid(update.effective_user.id).id).active_classroom_id)
     if activity_type:
         if activity_token_type.hidden:
-            token_type_sql.switch_hidden_status(activity_token_type.id)
+            activity_type_sql.unhide_activity_type(activity_type.id)
             await update.message.reply_text(
                 f"El tipo de actividad {activity_token_type.type} ya existe, pero está oculto. Se desocultará.",
                 reply_markup=ReplyKeyboardMarkup(keyboards.TEACHER_MAIN_MENU, one_time_keyboard=True, resize_keyboard=True),
@@ -217,6 +217,9 @@ async def activity_type_selected(update: Update, context: ContextTypes):
     await query.answer()
 
     activity_type_id = int(query.data.split("#")[1])
+    # Save activity_type id in context
+    context.user_data['activity']['activity_type_id'] = activity_type_id
+
     activity_type = activity_type_sql.get_activity_type(activity_type_id)
     token_type = token_type_sql.get_token_type(activity_type.token_type_id)
 
@@ -224,7 +227,7 @@ async def activity_type_selected(update: Update, context: ContextTypes):
         text = f"Tipo de actividad: {token_type.type}\n" + f"{'Actividad grupal' if activity_type.guild_activity else 'Actividad individual'}\n"
         if activity_type.description:
             text += f"Descripción: {activity_type.description}\n"
-        text += "Este tipo de actividad permite crear actividades específicas. Puede crearlas a continuación o acceder a las existentes.\n"
+        text += "\nEste tipo de actividad permite crear actividades específicas. Puede crearlas a continuación o acceder a las existentes.\n"
 
         activities = activity_sql.get_activities_by_activity_type_id(activity_type_id)
         if activities:
@@ -278,7 +281,88 @@ async def activity_type_selected(update: Update, context: ContextTypes):
         else:
             await query.edit_message_text(text, reply_markup=InlineKeyboardMarkup(keyboards.TEACHER_ACTIVITY_TYPE_OPTIONS))
     return states.T_ACTIVITIES_TYPE_INFO
+async def activity_type_edit_description(update: Update, context: ContextTypes):
+    """ Asks the user for a new description """
+    query = update.callback_query
+    await query.answer()
 
+    if activity_type_sql.get_activity_type(context.user_data['activity']['activity_type_id']).FileID:
+        await query.edit_message_caption(
+            "Ingrese una nueva descripción para esta actividad",
+            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Atrás", callback_data="back")]])
+        )
+    else:
+        await query.edit_message_text(
+            "Ingrese una nueva descripción para esta actividad",
+            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Atrás", callback_data="back")]])
+        )
+    return states.T_ACTIVITIES_TYPE_EDIT_DESCRIPTION
+async def activity_type_edit_description_done(update: Update, context: ContextTypes):
+    """ Updates the activity_type with the new description """
+    activity_type_id = context.user_data['activity']['activity_type_id']
+    new_description = update.message.text
+    activity_type_sql.update_description(activity_type_id, new_description)
+    logger.info(f"Activity type {activity_type_id} description updated by {update.effective_user.id}")
+    await update.message.reply_text(
+        "Descripción actualizada!",
+        reply_markup=ReplyKeyboardMarkup(keyboards.TEACHER_MAIN_MENU, one_time_keyboard=True, resize_keyboard=True),
+    )
+    return ConversationHandler.END
+async def activity_type_edit_file(update: Update, context: ContextTypes):
+    """ Asks the user to send a new file """
+    query = update.callback_query
+    await query.answer()
+
+    if activity_type_sql.get_activity_type(context.user_data['activity']['activity_type_id']).FileID:
+        await query.edit_message_caption(
+            "Envíe un nuevo archivo para esta actividad",
+            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Atrás", callback_data="back")]])
+        )
+    else:
+        await query.edit_message_text(
+            "Envíe un nuevo archivo para esta actividad",
+            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Atrás", callback_data="back")]])
+        )
+    return states.T_ACTIVITIES_TYPE_EDIT_FILE
+async def activity_type_edit_file_done(update: Update, context: ContextTypes):
+    """ Updates the activity_type with the new file id """
+    activity_type_id = context.user_data['activity']['activity_type_id']
+    file = update.message.document or update.message.photo
+    fid = None
+    if file:
+        if update.message.document:
+            fid = file.file_id
+        else:
+            fid = file[-1].file_id
+    activity_type_sql.update_file(activity_type_id, fid)
+    logger.info(f"Activity type {activity_type_id} file updated by {update.effective_user.id}")
+    await update.message.reply_text(
+        "Archivo actualizado!",
+        reply_markup=ReplyKeyboardMarkup(keyboards.TEACHER_MAIN_MENU, one_time_keyboard=True, resize_keyboard=True),
+    )
+    return ConversationHandler.END
+async def activity_type_hide(update: Update, context: ContextTypes):
+    """ Switch the hidden value of the token_type associated with this activity.
+    Should be always False, since there is no flow to arrive here if it is True.
+    """
+    query = update.callback_query
+    await query.answer()
+
+    activity_type_id = context.user_data['activity']['activity_type_id']
+    activity_type_sql.hide_activity_type(activity_type_id)
+    logger.info(f"Activity type {activity_type_id} hidden by {update.effective_user.id}: {token_type_sql.get_token_type(activity_type_sql.get_activity_type(activity_type_id).token_type_id).hidden}")
+    
+    await query.message.reply_text(
+        "Actividad oculta!\n Si desea volver a mostrarla deberá crear una nueva actividad con el mismo nombre.",
+        reply_markup=ReplyKeyboardMarkup(keyboards.TEACHER_MAIN_MENU, one_time_keyboard=True, resize_keyboard=True),
+    )
+    return ConversationHandler.END
+
+async def create_activity(update: Update, context: ContextTypes):
+    pass
+
+async def activity_selected(update: Update, context: ContextTypes):
+    pass
 
 
 
@@ -327,8 +411,16 @@ teacher_activities_conv = ConversationHandler(
             CallbackQueryHandler(activity_type_file, pattern=r"^continue$"),
             ],
         states.T_ACTIVITIES_TYPE_INFO: [
+            CallbackQueryHandler(activity_selected, pattern=r"^activity#"),
             paginator_handler,
-        ]
+            CallbackQueryHandler(activity_type_edit_description, pattern=r"^activity_type_change_description$"),
+            CallbackQueryHandler(activity_type_edit_file, pattern=r"^activity_type_change_file$"),
+            CallbackQueryHandler(activity_type_hide, pattern=r"^activity_type_hide$"),
+            CallbackQueryHandler(create_activity, pattern=r"^create_activity#"),
+        ],
+        states.T_ACTIVITIES_TYPE_EDIT_DESCRIPTION: [MessageHandler(filters.TEXT & ~filters.COMMAND, activity_type_edit_description_done)],
+        states.T_ACTIVITIES_TYPE_EDIT_FILE: [MessageHandler(filters.Document.ALL | filters.PHOTO, activity_type_edit_file_done)],
+
     },
     fallbacks=[
         CallbackQueryHandler(teacher_activities_back, pattern="back"),
