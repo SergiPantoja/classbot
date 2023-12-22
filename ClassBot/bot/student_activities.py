@@ -288,10 +288,69 @@ async def activity_type_send_submission_done(update: Update, context: ContextTyp
     )
     return ConversationHandler.END
 
-
 async def activity_send_submission(update: Update, context: ContextTypes):
     """ Sends a pending to the teacher. """
-    pass
+    query = update.callback_query
+    await query.answer()
+
+    activity_id = context.user_data['activity']['activity_id']
+    activity = activity_sql.get_activity(activity_id)
+    activity_type = activity_type_sql.get_activity_type(activity.activity_type_id)
+
+    guild_id = None
+    if activity_type.guild_activity:
+        # get guild id
+        student = student_sql.get_student(user_sql.get_user_by_chatid(update.effective_user.id).id)
+        classroom_id = student.active_classroom_id
+        guild = guild_sql.get_guild_by_student(student.id, classroom_id)
+        guild_id = guild.id if guild else None
+
+    # if guild save guild id in context
+    context.user_data['activity']['guild_id'] = guild_id
+
+    # ask for submission
+    if query.message.caption:
+        await query.edit_message_caption(query.message.caption + "\n\nEnvía tu entrega. Puedes enviar texto, una imagen o un archivo", reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Atrás", callback_data="back")]]),)
+    else:
+        await query.edit_message_text("Envía tu entrega. Puedes enviar texto, una imagen o un archivo", reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Atrás", callback_data="back")]]),)
+    return states.S_ACTIVITY_SEND_SUBMISSION_DONE
+
+async def activity_send_submission_done(update: Update, context: ContextTypes):
+    """ Creates a pending of token_type of the activity_type and with the token_id
+     of the activity. """
+    
+    student = student_sql.get_student(user_sql.get_user_by_chatid(update.effective_user.id).id)
+    classroom_id = student.active_classroom_id
+    guild_id = context.user_data['activity']['guild_id']
+    activity_id = context.user_data['activity']['activity_id']
+    activity = activity_sql.get_activity(activity_id)
+    token = token_sql.get_token(activity.token_id)
+    guild = guild_sql.get_guild(guild_id) if guild_id else None
+    activity_type = activity_type_sql.get_activity_type(activity.activity_type_id)
+    token_type = token_type_sql.get_token_type(activity_type.token_type_id)
+
+    # get file id if exists
+    file = update.message.document or update.message.photo
+    fid = None
+    if file:
+        if update.message.document:
+            fid = file.file_id
+        else:
+            fid = file[-1].file_id
+    
+    text = f"{user_sql.get_user(student.id).fullname} ha enviado una entrega para la actividad {token.name} de {token_type.type}:\n" + f"{'Gremio: ' + guild.name if guild else ''}\n" + f"{update.message.text if update.message.text else ''}" + f"{update.message.caption if update.message.caption else ''}"
+    
+    # Create pending in DB
+    pending_sql.add_pending(student_id=student.id, classroom_id=classroom_id, token_type_id=token_type.id, token_id=token.id, guild_id=guild_id, text=text, FileID=fid)
+    logger.info(f"New activity f{token.name} of f{token_type.type} pending created by student {user_sql.get_user(student.id).fullname}")
+    #TODO: Send notification to notification channel of the classroom if it exists
+
+    # notify student
+    await update.message.reply_text(
+        "Enviado!",
+        reply_markup=ReplyKeyboardMarkup(keyboards.STUDENT_MAIN_MENU, one_time_keyboard=True, resize_keyboard=True)
+    )
+    return ConversationHandler.END
 
 async def student_activities_back(update: Update, context: ContextTypes):
     """ Back to student menu. """
@@ -335,6 +394,9 @@ student_activities_conv = ConversationHandler(
         ],
         states.S_ACTIVITY_SEND_SUBMISSION: [
             CallbackQueryHandler(activity_send_submission, pattern=r"^send_submission$"),
+        ],
+        states.S_ACTIVITY_SEND_SUBMISSION_DONE: [
+            MessageHandler(filters.TEXT | filters.PHOTO | filters.Document.ALL, activity_send_submission_done)
         ],
     },
     fallbacks=[

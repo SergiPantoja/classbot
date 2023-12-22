@@ -55,7 +55,7 @@ async def teacher_pendings(update: Update, context: ContextTypes):
     
     if pendings:
         # create a list of lines for each pending
-        lines = [f"{i}. {token_type_sql.get_token_type(pending.token_type_id).type}: {user_sql.get_user(pending.student_id).fullname} Fecha: {datetime.date(pending.creation_date.year, pending.creation_date.month, pending.creation_date.day)} -> /pending_{pending.id} {'(Esperando más información)' if pending.more_info == 'PENDING' else ''}{'(Nueva información recibida)' if pending.more_info == 'SENT' else ''}" for i, pending in enumerate(pendings, start=1)]
+        lines = [f"{i}. {token_sql.get_token(pending.token_id).name + ' de' if pending.token_id else ''} {token_type_sql.get_token_type(pending.token_type_id).type} - {user_sql.get_user(pending.student_id).fullname} Fecha: {datetime.date(pending.creation_date.year, pending.creation_date.month, pending.creation_date.day)} -> /pending_{pending.id} {'(Esperando más información)' if pending.more_info == 'PENDING' else ''}{'(Nueva información recibida)' if pending.more_info == 'SENT' else ''}" for i, pending in enumerate(pendings, start=1)]
         # create new paginator using this lines
         other_buttons = [InlineKeyboardButton("Mis pendientes", callback_data="direct_pendings"), InlineKeyboardButton("Filtrar", callback_data="filter_pendings"), InlineKeyboardButton("Historial", callback_data="history_pendings")]
         paginator = Paginator(lines, items_per_page=10, text_before="Pendientes del aula:", add_back=True, other_buttons=other_buttons)
@@ -80,7 +80,7 @@ async def teacher_pendings(update: Update, context: ContextTypes):
         direct_pendings = pending_sql.get_direct_pendings_of_teacher(teacher.id, classroom_id, status="PENDING")
         if direct_pendings:
             # create a list of lines for each pending
-            lines = [f"{i}. {token_type_sql.get_token_type(pending.token_type_id).type}: {user_sql.get_user(pending.student_id).fullname} Fecha: {datetime.date(pending.creation_date.year, pending.creation_date.month, pending.creation_date.day)} -> /pending_{pending.id} {'(Esperando más información)' if pending.more_info == 'PENDING' else ''}{'(Nueva información recibida)' if pending.more_info == 'SENT' else ''}" for i, pending in enumerate(direct_pendings, start=1)]
+            lines = [f"{i}. {token_sql.get_token(pending.token_id).name + ' de' if pending.token_id else ''} {token_type_sql.get_token_type(pending.token_type_id).type} - {user_sql.get_user(pending.student_id).fullname} Fecha: {datetime.date(pending.creation_date.year, pending.creation_date.month, pending.creation_date.day)} -> /pending_{pending.id} {'(Esperando más información)' if pending.more_info == 'PENDING' else ''}{'(Nueva información recibida)' if pending.more_info == 'SENT' else ''}" for i, pending in enumerate(direct_pendings, start=1)]
             # create new paginator using this lines
             other_buttons = [InlineKeyboardButton("Del aula", callback_data="all_pendings"), InlineKeyboardButton("Filtrar", callback_data="filter_pendings"), InlineKeyboardButton("Historial", callback_data="history_pendings")]
             paginator = Paginator(lines, items_per_page=10, text_before="Aquí están tus pendientes directos, no hay más pendientes en el aula:", add_back=True, other_buttons=other_buttons)
@@ -128,7 +128,7 @@ async def teacher_direct_pendings(update: Update, context: ContextTypes):
     
     if pendings:
         # create a list of lines for each pending
-        lines = [f"{i}. {token_type_sql.get_token_type(pending.token_type_id).type}: {user_sql.get_user(pending.student_id).fullname} Fecha: {datetime.date(pending.creation_date.year, pending.creation_date.month, pending.creation_date.day)} -> /pending_{pending.id} {'(Esperando más información)' if pending.more_info == 'PENDING' else ''}{'(Nueva información recibida)' if pending.more_info == 'SENT' else ''}" for i, pending in enumerate(pendings, start=1)]
+        lines = [f"{i}. {token_sql.get_token(pending.token_id).name + ' de' if pending.token_id else ''} {token_type_sql.get_token_type(pending.token_type_id).type} - {user_sql.get_user(pending.student_id).fullname} Fecha: {datetime.date(pending.creation_date.year, pending.creation_date.month, pending.creation_date.day)} -> /pending_{pending.id} {'(Esperando más información)' if pending.more_info == 'PENDING' else ''}{'(Nueva información recibida)' if pending.more_info == 'SENT' else ''}" for i, pending in enumerate(pendings, start=1)]
         # create new paginator using this lines
         other_buttons = [InlineKeyboardButton("Del aula", callback_data="all_pendings"), InlineKeyboardButton("Filtrar", callback_data="filter_pendings"), InlineKeyboardButton("Historial", callback_data="history_pendings")]
         paginator = Paginator(lines, items_per_page=10, text_before="Mis pendientes directos:", add_back=True, other_buttons=other_buttons)
@@ -164,7 +164,7 @@ async def pending_history(update: Update, context: ContextTypes):
     # get the list of pendings of this classroom that are "APPROVED" by this teacher
     pendings = pending_sql.get_approved_pendings_of_teacher(teacher.id, classroom_id)
     if pendings:
-        lines = [f"{i}. {token_type_sql.get_token_type(pending.token_type_id).type}: {user_sql.get_user(pending.student_id).fullname} Aprobado el {datetime.date(pending.approved_date.year, pending.approved_date.month, pending.approved_date.day)} con un valor de {student_token_sql.get_value(pending.student_id, pending.token_id)} -> /pending_{pending.id}" for i, pending in enumerate(pendings, start=1)]
+        lines = [f"{i}. {token_sql.get_token(pending.token_id).name + ' de' if pending.token_id else ''} {token_type_sql.get_token_type(pending.token_type_id).type} - {user_sql.get_user(pending.student_id).fullname} Aprobado el {datetime.date(pending.approved_date.year, pending.approved_date.month, pending.approved_date.day)} con un valor de {student_token_sql.get_value(pending.student_id, pending.token_id)} -> /pending_{pending.id}" for i, pending in enumerate(pendings, start=1)]
         # create new paginator using this lines
         other_buttons = [InlineKeyboardButton("Todos los pendientes", callback_data="all_pendings")]
         paginator = Paginator(lines, items_per_page=10, text_before="Historial de pendientes que has aprobado:", add_back=True, other_buttons=other_buttons)
@@ -219,7 +219,7 @@ async def filter_pendings(update: Update, context: ContextTypes):
             
         if pendings:
             # create a list of lines for each pending
-            lines = [f"{i}. {token_type_sql.get_token_type(pending.token_type_id).type}: {user_sql.get_user(pending.student_id).fullname} Fecha: {datetime.date(pending.creation_date.year, pending.creation_date.month, pending.creation_date.day)} -> /pending_{pending.id} {'(Esperando más información)' if pending.more_info == 'PENDING' else ''}{'(Nueva información recibida)' if pending.more_info == 'SENT' else ''}" for i, pending in enumerate(pendings, start=1)]
+            lines = [f"{i}. {token_type_sql.get_token_type(pending.token_type_id).type} - {user_sql.get_user(pending.student_id).fullname} Fecha: {datetime.date(pending.creation_date.year, pending.creation_date.month, pending.creation_date.day)} -> /pending_{pending.id} {'(Esperando más información)' if pending.more_info == 'PENDING' else ''}{'(Nueva información recibida)' if pending.more_info == 'SENT' else ''}" for i, pending in enumerate(pendings, start=1)]
             # create new paginator using this lines
             other_buttons = [InlineKeyboardButton("Todos los pendientes", callback_data="all_pendings"), InlineKeyboardButton("Filtrar", callback_data="filter_pendings"), InlineKeyboardButton("Historial", callback_data="history_pendings")]
             paginator = Paginator(lines, items_per_page=10, text_before=f'Pendientes de "{t_type}":', add_back=True, other_buttons=other_buttons)
@@ -246,7 +246,7 @@ async def pending_info(update: Update, context: ContextTypes):
     Shows options for approving or rejecting it, or alternatively marking it as
     a direct pending."""
     logger.info("pending_info")
-    try:
+    try:    # command is /pending_{pending_id}
         pending_id = int(update.message.text.split("_")[1])
         # save pending_id in user_data
         if not "pending" in context.user_data:
@@ -263,8 +263,9 @@ async def pending_info(update: Update, context: ContextTypes):
     student_name = user_sql.get_user(pending.student_id).fullname
     token_type = token_type_sql.get_token_type(pending.token_type_id).type
     creation_date = datetime.date(pending.creation_date.year, pending.creation_date.month, pending.creation_date.day)
-
-    text = f"{token_type} de {student_name} el {creation_date}:\n\n"
+    token = token_sql.get_token(pending.token_id) if pending.token_id else None
+    #{'"' + token_sql.get_token(pending.token_id).name + '"' + ' de' if pending.token_id else ''} 
+    text = f"{token.name + ' de' if token else ''} {token_type} por {student_name} el {creation_date}:\n\n"
 
     if pending.guild_id:
         guild_name = guild_sql.get_guild(pending.guild_id).name
