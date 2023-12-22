@@ -17,6 +17,10 @@ def get_guilds_by_classroom(classroom_id: int) -> list[Guild]:
     with session() as s:
         return s.query(Guild).filter(Guild.classroom_id == classroom_id).order_by(Guild.name).all()
 
+def get_guild_by_student(student_id: int, classroom_id: int) -> Guild | None:
+    """ Returns the guild of the given student in the given classroom. None if not found. """
+    with session() as s:
+        return s.query(Guild).join(Guild.students).filter(Guild.classroom_id == classroom_id, Guild.students.any(student_id=student_id)).first()
 
 def add_guild(classroom_id: int, name: str) -> None:
     """ Adds a new guild to the database. """

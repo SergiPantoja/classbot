@@ -546,7 +546,7 @@ async def activity_selected(update: Update, context: ContextTypes):
             await query.edit_message_text("Se ha producido un error al enviar el archivo. Puede intentar editar la actividad para enviar otro archivo.\n\n" + text, reply_markup=InlineKeyboardMarkup(keyboards.TEACHER_ACTIVITY_OPTIONS))
     else:
         if query.message.caption:
-            await query.edit_message_caption(text, reply_markup=InlineKeyboardMarkup(keyboards.TEACHER_ACTIVITY_OPTIONS))
+            await query.message.reply_text(text, reply_markup=InlineKeyboardMarkup(keyboards.TEACHER_ACTIVITY_OPTIONS))
         else:
             await query.edit_message_text(text, reply_markup=InlineKeyboardMarkup(keyboards.TEACHER_ACTIVITY_OPTIONS))
 

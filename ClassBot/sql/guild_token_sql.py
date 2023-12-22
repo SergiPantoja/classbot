@@ -22,7 +22,9 @@ def add_guild_token(guild_id: int, token_id: int, value: int, teacher_id: int = 
     with session() as s:
         # add the token to the students of the guild
         for student in student_sql.get_students_by_guild(guild_id):
-            student_token_sql.add_student_token(student_id=student.id, token_id=token_id, value=value, teacher_id=teacher_id)
+            # check if the student already has the token, since moving students between guilds is allowed
+            if not student_token_sql.exists(student.id, token_id):
+                student_token_sql.add_student_token(student_id=student.id, token_id=token_id, value=value, teacher_id=teacher_id)
         # add the guild_token to the database
         s.add(Guild_token(
             guild_id=guild_id,

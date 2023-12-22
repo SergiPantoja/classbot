@@ -101,6 +101,132 @@ async def student_activities(update: Update, context: ContextTypes):
     return states.S_ACTIVITY_TYPE_SELECT
 
 async def activity_type_selected(update: Update, context: ContextTypes):
+    """ Shows the details of the selected activity_type. 
+        If the activity_type doesn't allow specific activities, show a button 
+        for the student to send a submission (create a pending).
+        If the activity_type allows specific activities, show the activities
+        that arent past deadline and the student or guild dont have the associated token.
+    """
+    query = update.callback_query
+    await query.answer()
+
+    activity_type_id = int(query.data.split("#")[1])
+    # Save activity_type id in context
+    context.user_data['activity']['activity_type_id'] = activity_type_id
+
+    activity_type = activity_type_sql.get_activity_type(activity_type_id)
+    token_type = token_type_sql.get_token_type(activity_type.token_type_id)
+
+    if activity_type.single_submission:
+        # Show activities that arent past deadline and the student or guild dont have the associated token.
+        # get activities
+        text = ""
+        activities = activity_sql.get_activities_by_activity_type_id(activity_type_id)
+        # filter by deadline
+        activities = [activity for activity in activities if (activity.submission_deadline is None) or (activity.submission_deadline >= datetime.datetime.now())]
+        # filter by token (depends if the activity_type is guild or individual)
+        if activity_type.guild_activity:
+            classroom_id = student_sql.get_student(user_sql.get_user_by_chatid(update.effective_user.id).id).active_classroom_id
+            guild = guild_sql.get_guild_by_student(student_sql.get_student(user_sql.get_user_by_chatid(update.effective_user.id).id).id, classroom_id)
+            if guild:
+                activities = [activity for activity in activities if not guild_token_sql.exists(guild.id, activity.token_id)]
+            else: # student doesnt belong to a guild
+                text += f"No perteneces a ningún gremio, por lo que no puedes enviar entregas para esta actividad\n\n"
+                activities = None
+        else:
+            activities = [activity for activity in activities if not student_token_sql.exists(student_sql.get_student(user_sql.get_user_by_chatid(update.effective_user.id).id).id, activity.token_id)]
+        if activities:
+            # show activities with pagination
+            buttons = [InlineKeyboardButton(f"{i}. {token_sql.get_token(activity.token_id).name}", callback_data=f"activity#{activity.id}") for i, activity in enumerate(activities, start=1)]
+            text = "Seleccione una actividad\n\n"
+            if activity_type.FileID:
+                try:
+                    try:
+                        await query.message.reply_photo(activity_type.FileID, caption=text, reply_markup=paginated_keyboard(buttons=buttons, context=context, add_back=True))
+                    except BadRequest:
+                        await query.message.reply_document(activity_type.FileID, caption=text, reply_markup=paginated_keyboard(buttons=buttons, context=context, add_back=True))
+                except BadRequest:
+                    await query.edit_message_text("Se ha producido un error al enviar el archivo.\n\n" + text, reply_markup=paginated_keyboard(buttons=buttons, context=context, add_back=True))
+            else:
+                await query.edit_message_text(text, reply_markup=paginated_keyboard(buttons=buttons, context=context, add_back=True))
+            return states.S_ACTIVITY_SELECT
+        else:
+            # no activities available for the student or guild
+            text += f"No hay actividades de {token_type.type} disponibles en este momento\n"
+            # go back to activity_type_select dont edit the keyboard
+            if activity_type.FileID:
+                try:
+                    try:
+                        await query.message.reply_photo(activity_type.FileID, caption=text)
+                    except BadRequest:
+                        await query.message.reply_document(activity_type.FileID, caption=text)
+                except BadRequest:
+                    await query.edit_message_text("Se ha producido un error al enviar el archivo.\n\n" + text)
+            else:
+                await query.edit_message_text(text)
+            return ConversationHandler.END       
+       
+    else:
+        # doesnt support specific activities
+        # show details and button to send submission
+        text = f"Actividad: {token_type.type}\n" + f"{'Actividad grupal' if activity_type.guild_activity else 'Actividad individual'}\n"
+        if activity_type.description:
+            text += f"Descripción: {activity_type.description}\n"
+        
+        if activity_type.FileID:
+            try:    
+                try:
+                    await query.message.reply_photo(activity_type.FileID, caption=text, reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Enviar entrega", callback_data="send_submission")], [InlineKeyboardButton("Atrás", callback_data="back")]]))
+                except BadRequest:
+                    await query.message.reply_document(activity_type.FileID, caption=text, reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Enviar entrega", callback_data="send_submission")], [InlineKeyboardButton("Atrás", callback_data="back")]]))
+            except BadRequest:
+                await query.edit_message_text("Se ha producido un error al enviar el archivo.\n\n" + text, reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Enviar entrega", callback_data="send_submission")], [InlineKeyboardButton("Atrás", callback_data="back")]]))
+        else:
+            await query.edit_message_text(text, reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Enviar entrega", callback_data="activity_type_send_submission")], [InlineKeyboardButton("Atrás", callback_data="back")]]))
+        return states.S_ACTIVITY_TYPE_SEND_SUBMISSION
+
+async def activity_selected(update: Update, context: ContextTypes):
+    """ Show activity details and button to send submission. """
+    query = update.callback_query
+    await query.answer()
+
+    activity_id = int(query.data.split("#")[1])
+    # Save activity id in context
+    context.user_data['activity']['activity_id'] = activity_id
+
+    activity = activity_sql.get_activity(activity_id)
+    token = token_sql.get_token(activity.token_id)
+    activity_type = activity_type_sql.get_activity_type(activity.activity_type_id)
+    token_type = token_type_sql.get_token_type(activity_type.token_type_id)
+
+    text = f"Actividad: {token.name} de {token_type.type}\n" + f"{'Actividad grupal' if activity_type.guild_activity else 'Actividad individual'}\n"
+    if token.description:
+        text += f"Descripción: {token.description}\n"
+    if activity.submission_deadline:
+        text += f"Fecha límite: {activity.submission_deadline.strftime('%d-%m-%Y')}\n"
+    
+    if activity.FileID:
+        try:
+            try:
+                await query.message.reply_photo(activity.FileID, caption=text, reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Enviar entrega", callback_data="send_submission")], [InlineKeyboardButton("Atrás", callback_data="back")]]))
+            except BadRequest:
+                await query.message.reply_document(activity.FileID, caption=text, reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Enviar entrega", callback_data="send_submission")], [InlineKeyboardButton("Atrás", callback_data="back")]]))
+        except BadRequest:
+            await query.edit_message_text("Se ha producido un error al enviar el archivo.\n\n" + text, reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Enviar entrega", callback_data="send_submission")], [InlineKeyboardButton("Atrás", callback_data="back")]]))
+    else:
+        if query.message.caption:
+            await query.message.reply_text(text, reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Enviar entrega", callback_data="send_submission")], [InlineKeyboardButton("Atrás", callback_data="back")]]))
+        else:
+            await query.edit_message_text(text, reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Enviar entrega", callback_data="send_submission")], [InlineKeyboardButton("Atrás", callback_data="back")]]))
+    return states.S_ACTIVITY_SEND_SUBMISSION
+
+async def activity_type_send_submission(update: Update, context: ContextTypes):
+    """ Sends a pending to the teacher. Guild activities requiere student to
+    belong to a guild. """
+    pass
+
+async def activity_send_submission(update: Update, context: ContextTypes):
+    """ Sends a pending to the teacher. """
     pass
 
 async def student_activities_back(update: Update, context: ContextTypes):
@@ -125,7 +251,6 @@ async def student_activities_back(update: Update, context: ContextTypes):
 
 
 # Handlers
-
 student_activities_conv = ConversationHandler(
     entry_points=[MessageHandler(filters.Regex("^Actividades 📝$"), student_activities)],
     states={
@@ -133,6 +258,16 @@ student_activities_conv = ConversationHandler(
             CallbackQueryHandler(student_activities, pattern=r"^(individual_activities|guild_activities)$"),
             CallbackQueryHandler(activity_type_selected, pattern=r"^activity_type#"),
             paginator_handler,
+        ],
+        states.S_ACTIVITY_SELECT: [
+            CallbackQueryHandler(activity_selected, pattern=r"^activity#"),
+            paginator_handler,
+        ],
+        states.S_ACTIVITY_TYPE_SEND_SUBMISSION: [
+            CallbackQueryHandler(activity_type_send_submission, pattern=r"^activity_type_send_submission$"),
+        ],
+        states.S_ACTIVITY_SEND_SUBMISSION: [
+            CallbackQueryHandler(activity_send_submission, pattern=r"^send_submission$"),
         ],
     },
     fallbacks=[
