@@ -176,11 +176,11 @@ async def activity_type_selected(update: Update, context: ContextTypes):
         if activity_type.FileID:
             try:    
                 try:
-                    await query.message.reply_photo(activity_type.FileID, caption=text, reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Enviar entrega", callback_data="send_submission")], [InlineKeyboardButton("Atrás", callback_data="back")]]))
+                    await query.message.reply_photo(activity_type.FileID, caption=text, reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Enviar entrega", callback_data="activity_type_send_submission")], [InlineKeyboardButton("Atrás", callback_data="back")]]))
                 except BadRequest:
-                    await query.message.reply_document(activity_type.FileID, caption=text, reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Enviar entrega", callback_data="send_submission")], [InlineKeyboardButton("Atrás", callback_data="back")]]))
+                    await query.message.reply_document(activity_type.FileID, caption=text, reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Enviar entrega", callback_data="activity_type_send_submission")], [InlineKeyboardButton("Atrás", callback_data="back")]]))
             except BadRequest:
-                await query.edit_message_text("Se ha producido un error al enviar el archivo.\n\n" + text, reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Enviar entrega", callback_data="send_submission")], [InlineKeyboardButton("Atrás", callback_data="back")]]))
+                await query.edit_message_text("Se ha producido un error al enviar el archivo.\n\n" + text, reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Enviar entrega", callback_data="activity_type_send_submission")], [InlineKeyboardButton("Atrás", callback_data="back")]]))
         else:
             await query.edit_message_text(text, reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Enviar entrega", callback_data="activity_type_send_submission")], [InlineKeyboardButton("Atrás", callback_data="back")]]))
         return states.S_ACTIVITY_TYPE_SEND_SUBMISSION
@@ -223,7 +223,71 @@ async def activity_selected(update: Update, context: ContextTypes):
 async def activity_type_send_submission(update: Update, context: ContextTypes):
     """ Sends a pending to the teacher. Guild activities requiere student to
     belong to a guild. """
-    pass
+    query = update.callback_query
+    await query.answer()
+
+    activity_type_id = context.user_data['activity']['activity_type_id']
+    activity_type = activity_type_sql.get_activity_type(activity_type_id)
+
+    guild = None
+    if activity_type.guild_activity:
+        # check if student belongs to a guild
+        student = student_sql.get_student(user_sql.get_user_by_chatid(update.effective_user.id).id)
+        classroom_id = student.active_classroom_id
+        guild = guild_sql.get_guild_by_student(student.id, classroom_id)
+        if not guild:
+            if query.message.caption:
+                await query.edit_message_caption(query.message.caption + "\n\nNo perteneces a ningún gremio, por lo que no puedes enviar entregas para esta actividad")
+            else:
+                await query.edit_message_text("No perteneces a ningún gremio, por lo que no puedes enviar entregas para esta actividad")
+        
+            return ConversationHandler.END
+    
+    # if guild save guild id in context
+    context.user_data['activity']['guild_id'] = guild.id if guild else None
+
+    # ask for submission
+    if query.message.caption:
+        await query.edit_message_caption(query.message.caption + "\n\nEnvía tu entrega. Puedes enviar texto, una imagen o un archivo", reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Atrás", callback_data="back")]]),)
+    else:
+        await query.edit_message_text("Envía tu entrega. Puedes enviar texto, una imagen o un archivo", reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Atrás", callback_data="back")]]),)
+    return states.S_ACTIVITY_TYPE_SEND_SUBMISSION_DONE
+
+async def activity_type_send_submission_done(update: Update, context: ContextTypes):
+    """ Creates a pending of token_type of the activity_type. """
+
+    student = student_sql.get_student(user_sql.get_user_by_chatid(update.effective_user.id).id)
+    classroom_id = student.active_classroom_id
+    guild_id = context.user_data['activity']['guild_id']
+    activity_type_id = context.user_data['activity']['activity_type_id']
+    activity_type = activity_type_sql.get_activity_type(activity_type_id)
+    token_type = token_type_sql.get_token_type(activity_type.token_type_id)
+    guild_id = context.user_data['activity']['guild_id']
+    guild = guild_sql.get_guild(guild_id) if guild_id else None
+    
+    # get file id if exists
+    file = update.message.document or update.message.photo
+    fid = None
+    if file:
+        if update.message.document:
+            fid = file.file_id
+        else:
+            fid = file[-1].file_id
+    
+    text = f"{user_sql.get_user(student.id).fullname} ha enviado una entrega para la actividad {token_type.type}:\n" + f"{'Gremio: ' + guild.name if guild else ''}\n" + f"{update.message.text if update.message.text else ''}" + f"{update.message.caption if update.message.caption else ''}"
+
+    # Create pending in DB
+    pending_sql.add_pending(student_id=student.id, classroom_id=classroom_id, token_type_id=token_type.id, guild_id=guild_id, text=text, FileID=fid)
+    logger.info(f"New activity_type f{token_type.type} pending created by student {user_sql.get_user(student.id).fullname}")
+    #TODO: Send notification to notification channel of the classroom if it exists
+
+    # notify student
+    await update.message.reply_text(
+        "Enviado!",
+        reply_markup=ReplyKeyboardMarkup(keyboards.STUDENT_MAIN_MENU, one_time_keyboard=True, resize_keyboard=True)
+    )
+    return ConversationHandler.END
+
 
 async def activity_send_submission(update: Update, context: ContextTypes):
     """ Sends a pending to the teacher. """
@@ -265,6 +329,9 @@ student_activities_conv = ConversationHandler(
         ],
         states.S_ACTIVITY_TYPE_SEND_SUBMISSION: [
             CallbackQueryHandler(activity_type_send_submission, pattern=r"^activity_type_send_submission$"),
+        ],
+        states.S_ACTIVITY_TYPE_SEND_SUBMISSION_DONE: [
+            MessageHandler(filters.TEXT | filters.PHOTO | filters.Document.ALL, activity_type_send_submission_done)
         ],
         states.S_ACTIVITY_SEND_SUBMISSION: [
             CallbackQueryHandler(activity_send_submission, pattern=r"^send_submission$"),

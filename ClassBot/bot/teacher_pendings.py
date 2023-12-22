@@ -15,7 +15,7 @@ from bot.utils import states, keyboards
 from bot.utils.inline_keyboard_pagination import paginated_keyboard, paginator_handler
 from bot.utils.pagination import Paginator, text_paginator_handler
 from bot.utils.clean_context import clean_teacher_context
-from sql import user_sql, teacher_sql, classroom_sql, course_sql, pending_sql, token_type_sql, teacher_classroom_sql, token_sql, student_token_sql, guild_sql
+from sql import user_sql, teacher_sql, classroom_sql, course_sql, pending_sql, token_type_sql, teacher_classroom_sql, token_sql, student_token_sql, guild_sql, guild_token_sql, student_sql
 from bot.teacher_settings import back_to_teacher_menu
 
 
@@ -403,6 +403,8 @@ async def manage_pending(update: Update, context: ContextTypes):
             )
             return ConversationHandler.END
 
+        # if practic class excercise :
+
         # Ask for value and comment, then create a token if it doesn't exist
         if query.message.text:
             await query.edit_message_text(
@@ -547,6 +549,8 @@ async def approve_pending(update: Update, context: ContextTypes):
     student_name = user_sql.get_user(pending.student_id).fullname
     token_type = token_type_sql.get_token_type(pending.token_type_id).type
     classroom_id = pending.classroom_id
+    guild = guild_sql.get_guild(pending.guild_id) if pending.guild_id else None
+    teacher_name = user_sql.get_user_by_chatid(update.effective_user.id).fullname
 
     text = update.message.text
     # get token value and comment
@@ -560,31 +564,49 @@ async def approve_pending(update: Update, context: ContextTypes):
     token = pending_sql.get_token(pending_id)
     if not token:
         # create token
-        token_sql.add_token(name=f"{token_type} de {student_name}", token_type_id=pending.token_type_id, classroom_id=classroom_id)
+        token_sql.add_token(name=f"{token_type} de {guild.name if guild else student_name}", token_type_id=pending.token_type_id, classroom_id=classroom_id)
         logger.info(f"Token {token_type} created")
         # update pending with this token
         pending_sql.update_token(pending_id, token_sql.get_last_token().id)
 
     # get token id
     token = pending_sql.get_token(pending_id)
-    # assign token to student
-    student_token_sql.add_student_token(student_id=pending.student_id, token_id=token.id, value=value, teacher_id=user_sql.get_user_by_chatid(update.effective_user.id).id)
-    logger.info(f"Token {token.id} assigned to student {pending.student_id} with value {value}")
+    # assign token to student or guild
+    if guild:
+        guild_token_sql.add_guild_token(guild_id=guild.id, token_id=token.id, value=value, teacher_id=user_sql.get_user_by_chatid(update.effective_user.id).id)
+        logger.info(f"Token {token.id} assigned to guild {guild.id} with value {value}")
+    else:
+        student_token_sql.add_student_token(student_id=pending.student_id, token_id=token.id, value=value, teacher_id=user_sql.get_user_by_chatid(update.effective_user.id).id)
+        logger.info(f"Token {token.id} assigned to student {pending.student_id} with value {value}")
+    
     # change pending status to approved
     pending_sql.approve_pending(pending_id, user_sql.get_user_by_chatid(update.effective_user.id).id)
     logger.info(f"Pending {pending_id} approved")
 
-    # notify student
-    text = f"El profesor {user_sql.get_user_by_chatid(update.effective_user.id).fullname} ha aprobado tu {token_type}.\n\nTu {token_type}:\n{pending.text}"
-    if comment:
-        text += f"\n\nComentario:\n{comment}"
-    try:
-        await context.bot.send_message(
-            chat_id=student_chat_id,
-            text=text,
-        )
-    except BadRequest:
-        logger.error(f"Error sending message to student {student_name} (chat_id: {student_chat_id})")
+    # notify student or guild
+    if guild:
+        text = f"El profesor {teacher_name} ha aprobado el {token_type} del gremio {guild.name} con un valor de {value}.\n\nTu {token_type}:\n{pending.text}"
+        if comment:
+            text += f"\n\nComentario:\n{comment}"
+        for student in student_sql.get_students_by_guild(guild.id):
+            try:
+                await context.bot.send_message(
+                    chat_id=user_sql.get_user(student.id).telegram_chatid,
+                    text=text,
+                )
+            except BadRequest:
+                logger.error(f"Error sending message to student {user_sql.get_user(student.id).fullname} (chat_id: {user_sql.get_user(student.id).telegram_chatid})")
+    else:
+        text = f"El profesor {teacher_name} ha aprobado tu {token_type} con un valor de {value}.\n\nTu {token_type}:\n{pending.text}"
+        if comment:
+            text += f"\n\nComentario:\n{comment}"
+        try:
+            await context.bot.send_message(
+                chat_id=student_chat_id,
+                text=text,
+            )
+        except BadRequest:
+            logger.error(f"Error sending message to student {student_name} (chat_id: {student_chat_id})")
 
     await update.message.reply_text(
         text="El pendiente ha sido aprobado.",
