@@ -27,7 +27,6 @@ def get_practic_class_exercises_by_practic_class_id(practic_class_id: int) -> li
 def add_practic_class_exercise(
         value: int,
         practic_class_id: int,
-        activity_id: int,
         classroom_id: int,
         name: str,
         partial_credits_allowed: bool = False,

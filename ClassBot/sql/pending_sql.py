@@ -176,3 +176,12 @@ def send_more_info(pending_id: int, info: str, FileID: str = None) -> None:
             FileID = current_file   # To avoid deleting the file
         s.query(Pending).filter(Pending.id == pending_id).update({"more_info": "SENT", "text": current_text, "FileID": FileID})
         s.commit()
+
+def delete_pending(pending_id: int) -> None:
+    """ Deletes the pending. """
+    with session() as s:
+        # get pending
+        pending = s.execute(select(Pending).where(Pending.id == pending_id)).scalar_one()
+        # delete pending
+        s.delete(pending)
+        s.commit()

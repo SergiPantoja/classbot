@@ -626,9 +626,29 @@ async def approve_pending(update: Update, context: ContextTypes):
     token = pending_sql.get_token(pending_id)
     # assign token to student or guild
     if guild:
+        # if guild has this token already assigned (sent multiple pendings or teacher reviewed manually before seeing the pending),
+        # delete the pending and notify the teacher.
+        if guild_token_sql.exists(guild.id, token.id):
+            pending_sql.delete_pending(pending_id)
+            logger.info(f"Pending {pending_id} deleted")
+            await update.message.reply_text(
+                text=f"El gremio {guild.name} ya recibió créditos por esta actividad: {token.name} de {token_type}. El pendiente ha sido eliminado.",
+                reply_markup=ReplyKeyboardMarkup(keyboards.TEACHER_MAIN_MENU, one_time_keyboard=True, resize_keyboard=True),
+            )
+            return ConversationHandler.END
         guild_token_sql.add_guild_token(guild_id=guild.id, token_id=token.id, value=value, teacher_id=user_sql.get_user_by_chatid(update.effective_user.id).id)
         logger.info(f"Token {token.id} assigned to guild {guild.id} with value {value}")
     else:
+        # if student has this token already assigned (sent multiple pendings or teacher reviewed manually before seeing the pending),
+        # delete the pending and notify the teacher.
+        if student_token_sql.exists(pending.student_id, token.id):
+            pending_sql.delete_pending(pending_id)
+            logger.info(f"Pending {pending_id} deleted")
+            await update.message.reply_text(
+                text=f"{student_name} ya recibió créditos por esta actividad: {token.name} de {token_type}. El pendiente ha sido eliminado.",
+                reply_markup=ReplyKeyboardMarkup(keyboards.TEACHER_MAIN_MENU, one_time_keyboard=True, resize_keyboard=True),
+            )
+            return ConversationHandler.END
         student_token_sql.add_student_token(student_id=pending.student_id, token_id=token.id, value=value, teacher_id=user_sql.get_user_by_chatid(update.effective_user.id).id)
         logger.info(f"Token {token.id} assigned to student {pending.student_id} with value {value}")
     

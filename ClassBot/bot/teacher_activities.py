@@ -68,7 +68,7 @@ async def teacher_activities(update: Update, context: ContextTypes):
         await update.message.reply_text(
             "No hay actividades en el aula. Desear crear una?",
             reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("Crear actividad", callback_data="create_activity_type")]]),
+                [InlineKeyboardButton("Crear actividad", callback_data="create_activity_type")], InlineKeyboardButton("Atrás", callback_data="back")]),
         )
         return states.T_ACTIVITIES_CREATE_TYPE
 
