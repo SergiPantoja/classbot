@@ -100,6 +100,8 @@ async def practic_class_selected(update: Update, context: ContextTypes):
         text += f"<b>Descripción:</b> {activity_type.description}\n"
     text += "<b>Ejercicios:</b>\n"
     exercises = practic_class_exercises_sql.get_practic_class_exercises_by_practic_class_id(practic_class_id)
+    # dont show exercises the student has earned credits for
+    exercises = [exercise for exercise in exercises if not student_token_sql.exists(student_sql.get_student(user_sql.get_user_by_chatid(update.effective_user.id).id).id, token_sql.get_token(activity_sql.get_activity(exercise.activity_id).token_id).id)]
     if exercises:
         # sort exercises by name
         exercises.sort(key=lambda x: token_sql.get_token(activity_sql.get_activity(x.activity_id).token_id).name)
