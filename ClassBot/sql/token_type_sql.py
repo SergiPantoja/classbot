@@ -42,3 +42,12 @@ def add_token_type(type: str, classroom_id: int = None, hidden: bool = False) ->
     with session() as s:
         s.add(Token_type(type=type, classroom_id=classroom_id, hidden=hidden))
         s.commit()
+
+def delete_token_type(id: int) -> None:
+    """ Deletes a token_type from the database. """
+    with session() as s:
+        # get token_type
+        token_type = s.execute(select(Token_type).where(Token_type.id == id)).scalar_one()
+        # delete token_type
+        s.delete(token_type)
+        s.commit()

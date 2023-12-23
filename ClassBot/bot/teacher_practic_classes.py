@@ -208,9 +208,6 @@ async def practic_class_file(update: Update, context: ContextTypes):
         )
         logger.info(f"Created practic class exercise {exercises[i]}")
     
-    # clean context
-    context.user_data.pop("practic_class")
-
     # show practic classes with pagination
     practic_classes = practic_class_sql.get_practic_classes(classroom_id=classroom_id, include_hidden=True)
     buttons = [InlineKeyboardButton(f"{i}. {token_type_sql.get_token_type(activity_type_sql.get_activity_type(practic_class.activity_type_id).token_type_id).type}", callback_data=f"practic_class#{practic_class.id}") for i, practic_class in enumerate(practic_classes, start=1)]
@@ -282,6 +279,143 @@ async def practic_class_selected(update: Update, context: ContextTypes):
         else:
             await query.edit_message_text(text, parse_mode="HTML", reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Crear ejercicio", callback_data=f"create_exercise#{practic_class_id}")],] + keyboards.TEACHER_PRACTIC_CLASS_OPTIONS))
     return states.T_CP_INFO
+async def practic_class_edit_date(update: Update, context: ContextTypes):
+    """ Asks for the new date"""
+    query = update.callback_query
+    await query.answer()
+
+    if query.message.caption:
+        await query.edit_message_caption(
+            query.message.caption + "\n\n"
+            "Inserte la nueva fecha de la clase práctica en este formato: dd-mm-aaaa",
+            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Atrás", callback_data="back")]]),
+        )
+    else:
+        await query.edit_message_text(
+            "Inserte la nueva fecha de la clase práctica en este formato: dd-mm-aaaa",
+            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Atrás", callback_data="back")]])
+        )
+    return states.T_CP_EDIT_DATE
+async def practic_class_edit_date_done(update: Update, context: ContextTypes):
+    """ Updates the practic class with the new date """
+    date_str = update.message.text
+    # validate date
+    try:
+        date = datetime.datetime.strptime(date_str, "%d-%m-%Y")
+    except ValueError:
+        await update.message.reply_text(
+            "El formato de la fecha es incorrecto, por favor intente de nuevo",
+            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Atrás", callback_data="back")]])
+        )
+        return states.T_CP_EDIT_DATE
+    
+    practic_class_id = context.user_data["practic_class"]["practic_class_id"]
+    practic_class_sql.update_date(practic_class_id, date)
+    logger.info(f"Updated practic class date to {date}")
+    await update.message.reply_text(
+        "fecha actualizada",
+        reply_markup=ReplyKeyboardMarkup(keyboards.TEACHER_MAIN_MENU, one_time_keyboard=True, resize_keyboard=True),
+    )
+    return ConversationHandler.END
+async def practic_class_edit_description(update: Update, context: ContextTypes):
+    query = update.callback_query
+    await query.answer()
+
+    if query.message.caption:
+        await query.edit_message_caption(
+            query.message.caption + "\n\n"
+            "Inserte la nueva descripción de la clase práctica.",
+            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Atrás", callback_data="back")]])
+        )
+    else:
+        await query.edit_message_text(
+            "Inserte la nueva descripción de la clase práctica.",
+            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Atrás", callback_data="back")]])
+        )
+    return states.T_CP_EDIT_DESCRIPTION
+async def practic_class_edit_description_done(update: Update, context: ContextTypes):
+    """ Updates the practic class with the new description """
+    description = update.message.text
+    practic_class_id = context.user_data["practic_class"]["practic_class_id"]
+    practic_class_sql.update_description(practic_class_id, description)
+    logger.info(f"Updated practic class description to {description}")
+    await update.message.reply_text(
+        "Descripción actualizada",
+        reply_markup=ReplyKeyboardMarkup(keyboards.TEACHER_MAIN_MENU, one_time_keyboard=True, resize_keyboard=True),
+    )
+    return ConversationHandler.END
+async def practic_class_edit_file(update: Update, context: ContextTypes):
+    """ Asks for the new file """
+    query = update.callback_query
+    await query.answer()
+
+    if query.message.caption:
+        await query.edit_message_caption(
+            query.message.caption + "\n\n"
+            "Inserte el nuevo archivo de la clase práctica.",
+            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Atrás", callback_data="back")]])
+        )
+    else:
+        await query.edit_message_text(
+            "Inserte el nuevo archivo de la clase práctica.",
+            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Atrás", callback_data="back")]])
+        )
+    return states.T_CP_EDIT_FILE
+async def practic_class_edit_file_done(update: Update, context: ContextTypes):
+    practic_class_id = context.user_data["practic_class"]["practic_class_id"]
+    file = update.message.document or update.message.photo
+    fid = None
+    if file:
+        if update.message.document:
+            fid = file.file_id
+        else:
+            fid = file[-1].file_id
+    practic_class_sql.update_file(practic_class_id, fid)
+    logger.info(f"Updated practic class file to {fid}")
+    await update.message.reply_text(
+        "Archivo actualizado",
+        reply_markup=ReplyKeyboardMarkup(keyboards.TEACHER_MAIN_MENU, one_time_keyboard=True, resize_keyboard=True),
+    )
+    return ConversationHandler.END
+async def practic_class_delete(update: Update, context: ContextTypes):
+    """ Asks for confirmation to delete the practic class """
+    query = update.callback_query
+    await query.answer()
+
+    if query.message.caption:
+        await query.edit_message_caption(
+            query.message.caption + "\n\n"
+            "Está seguro que desea eliminar esta clase práctica? Esta acción no se puede deshacer.",
+            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Si", callback_data="practic_class_delete_confirm"), InlineKeyboardButton("No", callback_data="back")]])
+        )
+    else:
+        await query.edit_message_text(
+            "Está seguro que desea eliminar esta clase práctica? Esta acción no se puede deshacer.",
+            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Si", callback_data="practic_class_delete_confirm"), InlineKeyboardButton("No", callback_data="back")]])
+        )
+    return states.T_CP_DELETE
+async def practic_class_delete_confirm(update: Update, context: ContextTypes):
+    """ Deletes the practic class 
+        Deletes the token_type of the activity_type of the practic class and
+        should delete the activity_type -> practic_class and token -> activity
+        -> practic_class_exercise in cascade.
+    """
+    query = update.callback_query
+    await query.answer()
+
+    practic_class_id = context.user_data["practic_class"]["practic_class_id"]
+    token_type_id = activity_type_sql.get_activity_type(practic_class_sql.get_practic_class(practic_class_id).activity_type_id).token_type_id
+    token_type_sql.delete_token_type(token_type_id)
+    logger.info(f"Deleted token_type {token_type_id}")
+    await query.message.reply_text(
+        "Clase práctica eliminada",
+        reply_markup=ReplyKeyboardMarkup(keyboards.TEACHER_MAIN_MENU, one_time_keyboard=True, resize_keyboard=True),
+    )
+    return ConversationHandler.END
+
+
+async def create_exercise(update: Update, context: ContextTypes):
+    pass
 
 async def exercise_selected(update: Update, context: ContextTypes):
     pass
@@ -334,7 +468,17 @@ teacher_practic_classes_conv = ConversationHandler(
         states.T_CP_INFO: [
             CallbackQueryHandler(exercise_selected, pattern=r"^exercise#"),
             paginator_handler,
+            CallbackQueryHandler(practic_class_edit_date, pattern=r"^practic_class_change_date$"),
+            CallbackQueryHandler(practic_class_edit_description, pattern=r"^practic_class_change_description$"),
+            CallbackQueryHandler(practic_class_edit_file, pattern=r"^practic_class_change_file$"),
+            CallbackQueryHandler(practic_class_delete, pattern=r"^practic_class_delete$"),
+            CallbackQueryHandler(create_exercise, pattern=r"^create_exercise#"),
         ],
+        states.T_CP_EDIT_DATE: [MessageHandler(filters.TEXT & ~filters.COMMAND, practic_class_edit_date_done)],
+        states.T_CP_EDIT_DESCRIPTION: [MessageHandler(filters.TEXT & ~filters.COMMAND, practic_class_edit_description_done)],
+        states.T_CP_EDIT_FILE: [MessageHandler(filters.Document.ALL | filters.PHOTO, practic_class_edit_file_done)],
+        states.T_CP_DELETE: [CallbackQueryHandler(practic_class_delete_confirm, pattern=r"^practic_class_delete_confirm$")],
+        
     },
     fallbacks=[
         CallbackQueryHandler(teacher_practic_classes_back, pattern="back"),

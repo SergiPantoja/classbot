@@ -142,6 +142,19 @@ TEACHER_ACTIVITY_OPTIONS =[
         InlineKeyboardButton("Atrás", callback_data="back"),
     ],
 ]
+TEACHER_PRACTIC_CLASS_OPTIONS = [
+    [
+        InlineKeyboardButton("Cambiar fecha", callback_data="practic_class_change_date"),
+        InlineKeyboardButton("Cambiar descripción", callback_data="practic_class_change_description"),
+    ],
+    [
+        InlineKeyboardButton("Enviar otro archivo", callback_data="practic_class_change_file"),
+        InlineKeyboardButton("Eliminar clase práctica", callback_data="practic_class_delete"),
+    ],
+    [
+        InlineKeyboardButton("Atrás", callback_data="back"),
+    ],
+]
 
 STUDENT_MAIN_MENU = [["🧑‍🎓 Conferencias", "Inventario"], ["Acciones", "Gremio"], ["Opciones", "Actividades 📝"], ["📓 Clases Prácticas", "Atrás"]]
 STUDENT_INVENTORY = [["Medallas", "Atrás"]]
