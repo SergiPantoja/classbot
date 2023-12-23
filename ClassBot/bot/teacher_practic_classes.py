@@ -112,7 +112,7 @@ async def practic_class_string(update: Update, context: ContextTypes):
         )
         return states.T_CP_CREATE_STRING
     for i in range(0, len(exercises), 2):
-        if not exercises[i][0].isalpha() or not exercises[i+1].isdigit():
+        if not exercises[i+1].isdigit():
             await update.message.reply_text(
                 "El formato de la clase práctica es incorrecto, por favor intente de nuevo",
                 reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Atrás", callback_data="back")]])
@@ -250,6 +250,7 @@ async def practic_class_selected(update: Update, context: ContextTypes):
     exercises = practic_class_exercises_sql.get_practic_class_exercises_by_practic_class_id(practic_class_id)
     if exercises:
         buttons = [InlineKeyboardButton(f"{i}. {token_sql.get_token(activity_sql.get_activity(exercise.activity_id).token_id).name} - ({exercise.value})", callback_data=f"exercise#{exercise.id}") for i, exercise in enumerate(exercises, start=1)]
+        #TODO: sort exercises by name
         other_buttons = [
             InlineKeyboardButton("Crear ejercicio", callback_data=f"create_exercise#{practic_class_id}"),
             InlineKeyboardButton("Cambiar fecha", callback_data="practic_class_change_date"),
@@ -413,9 +414,171 @@ async def practic_class_delete_confirm(update: Update, context: ContextTypes):
     )
     return ConversationHandler.END
 
-
 async def create_exercise(update: Update, context: ContextTypes):
-    pass
+    """ Starts the flow to create a practic_class_exercise  
+        Asks for name, then value, optional description and FileID.
+        Finally asks if partial credtis is allowed, which means the teacher
+        can later approve the pending of this exercise (or manually review it)
+        and assing any amount of credits between 0 and the max value instead of
+        just 0 or the max value.
+    """
+    query = update.callback_query
+    await query.answer()
+
+    if query.message.caption:
+        await query.edit_message_caption(
+            query.message.caption + "\n\n"
+            "Ingrese el nombre del ejercicio.",
+            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Atrás", callback_data="back")]])
+        )
+    else:
+        await query.edit_message_text(
+            "Ingrese el nombre del ejercicio.",
+            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Atrás", callback_data="back")]])
+        )
+    return states.T_CP_CREATE_EXERCISE_NAME
+async def practic_class_exercise_name(update: Update, context: ContextTypes):
+    """ Receives the exercise name and asks for the value """
+    name = update.message.text
+    # save in context
+    context.user_data["practic_class"]["exercise_name"] = name
+    await update.message.reply_text(
+        "Ingrese el valor del ejercicio.",
+        reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Atrás", callback_data="back")]])
+    )
+    return states.T_CP_CREATE_EXERCISE_VALUE
+async def practic_class_exercise_value(update: Update, context: ContextTypes):
+    """ Receives the value, validates is the correct type and asks for the description """
+    value = update.message.text
+    # validate value
+    if not value.isdigit():
+        await update.message.reply_text(
+            "El formato del valor es incorrecto, por favor intente de nuevo",
+            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Atrás", callback_data="back")]])
+        )
+        return states.T_CP_CREATE_EXERCISE_VALUE
+    # save in context
+    context.user_data["practic_class"]["exercise_value"] = value
+    await update.message.reply_text(
+        "Ingrese la descripción del ejercicio o presione continuar.",
+        reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Continuar", callback_data="continue")]])
+    )
+    return states.T_CP_CREATE_EXERCISE_DESCRIPTION
+async def practic_class_exercise_description(update: Update, context: ContextTypes):
+    """ Receives the description if sent and asks for the file """
+    query = update.callback_query
+    if query:
+        await query.answer()
+        context.user_data["practic_class"]["exercise_description"] = None
+        await query.edit_message_text(
+            "Puede adjuntar un archivo al ejercicio si lo desea.",
+            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Continuar", callback_data="continue")]])
+        )
+    else:
+        description = update.message.text
+        context.user_data["practic_class"]["exercise_description"] = description
+        await update.message.reply_text(
+            "Puede adjuntar un archivo al ejercicio si lo desea.",
+            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Continuar", callback_data="continue")]])
+        )
+    return states.T_CP_CREATE_EXERCISE_FILE
+async def practic_class_exercise_file(update: Update, context: ContextTypes):
+    """ Receives the file if sent and asks if partial credits are allowed """
+    query = update.callback_query
+    if query:
+        await query.answer()
+        file = None
+    else:
+        file = update.message.document or update.message.photo
+    fid = None
+    if file:
+        if update.message.document:
+            fid = file.file_id
+        else:
+            fid = file[-1].file_id
+    
+    # save in context
+    context.user_data["practic_class"]["exercise_file_id"] = fid
+
+    if query:
+        await query.edit_message_text(
+            "Permitir créditos parciales?\n\nEsto significa que si el estudiante envia una ejercicio parcialmente completo/correcto, el profesor puede aprobar la tarea y asignarle una cantidad de créditos entre 0 y el valor máximo del ejercicio.",
+            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Si", callback_data="yes"), InlineKeyboardButton("No", callback_data="no")]])
+        )
+    else:
+        await update.message.reply_text(
+            "Permitir créditos parciales?\n\nEsto significa que si el estudiante envia una ejercicio parcialmente completo/correcto, el profesor puede aprobar la tarea y asignarle una cantidad de créditos entre 0 y el valor máximo del ejercicio.",
+            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Si", callback_data="yes"), InlineKeyboardButton("No", callback_data="no")]])
+        )
+    return states.T_CP_CREATE_EXERCISE_PARTIAL_CREDITS
+async def practic_class_exercise_partial_credits(update: Update, context: ContextTypes):
+    """ Receives the partial credits option and creates the exercise """
+    query = update.callback_query
+    await query.answer()
+
+    partial_credits = query.data == "yes"
+
+    # get classroom id
+    classroom_id = teacher_sql.get_teacher(user_sql.get_user_by_chatid(update.effective_user.id).id).active_classroom_id
+    practic_class_id = context.user_data["practic_class"]["practic_class_id"]
+
+    # create exercise
+    practic_class_exercises_sql.add_practic_class_exercise(
+        value=int(context.user_data["practic_class"]["exercise_value"]),
+        practic_class_id=practic_class_id,
+        classroom_id=classroom_id,
+        name=context.user_data["practic_class"]["exercise_name"],
+        partial_credits_allowed=partial_credits,
+        description=context.user_data["practic_class"]["exercise_description"],
+        FileID=context.user_data["practic_class"]["exercise_file_id"],
+    )
+    logger.info(f"Created practic class exercise {context.user_data['practic_class']['exercise_name']}")
+
+    # show practic class exercises with pagination
+    practic_class = practic_class_sql.get_practic_class(practic_class_id)
+    activity_type = activity_type_sql.get_activity_type(practic_class.activity_type_id)
+    token_type = token_type_sql.get_token_type(activity_type.token_type_id)
+
+    text = f"<b>Clase práctica:</b> {token_type.type}\n"
+    text += f"<b>Fecha:</b> {practic_class.date.strftime('%d-%m-%Y')}\n"
+    if activity_type.description:
+        text += f"<b>Descripción:</b> {activity_type.description}\n"
+    text += "<b>Ejercicios:</b>\n"
+
+    exercises = practic_class_exercises_sql.get_practic_class_exercises_by_practic_class_id(practic_class_id)
+
+    buttons = [InlineKeyboardButton(f"{i}. {token_sql.get_token(activity_sql.get_activity(exercise.activity_id).token_id).name} - ({exercise.value})", callback_data=f"exercise#{exercise.id}") for i, exercise in enumerate(exercises, start=1)]
+    #TODO: sort exercises by name
+    other_buttons = [
+        InlineKeyboardButton("Crear ejercicio", callback_data=f"create_exercise#{practic_class_id}"),
+        InlineKeyboardButton("Cambiar fecha", callback_data="practic_class_change_date"),
+        InlineKeyboardButton("Cambiar descripción", callback_data="practic_class_change_description"),
+        InlineKeyboardButton("Enviar otro archivo", callback_data="practic_class_change_file"),
+        InlineKeyboardButton("Eliminar clase práctica", callback_data="practic_class_delete"),
+    ]
+    if query:
+        if activity_type.FileID:
+            try:
+                try:
+                    await query.message.reply_photo(activity_type.FileID, caption=text, parse_mode="HTML", reply_markup=paginated_keyboard(buttons, context=context, add_back=True, other_buttons=other_buttons))
+                except BadRequest:
+                    await query.message.reply_document(activity_type.FileID, caption=text, parse_mode="HTML", reply_markup=paginated_keyboard(buttons, context=context, add_back=True, other_buttons=other_buttons))
+            except BadRequest:
+                await query.edit_message_text("Se ha producido un error al enviar el archivo. Puede intentar editar la clase práctica para enviar otro archivo.\n\n" + text, parse_mode="HTML", reply_markup=paginated_keyboard(buttons, context=context, add_back=True, other_buttons=other_buttons))
+        else:
+            await query.edit_message_text(text, parse_mode="HTML", reply_markup=paginated_keyboard(buttons, context=context, add_back=True, other_buttons=other_buttons))
+    else:
+        if activity_type.FileID:
+            try:
+                try:
+                    await update.message.reply_photo(activity_type.FileID, caption=text, parse_mode="HTML", reply_markup=paginated_keyboard(buttons, context=context, add_back=True, other_buttons=other_buttons))
+                except BadRequest:
+                    await update.message.reply_document(activity_type.FileID, caption=text, parse_mode="HTML", reply_markup=paginated_keyboard(buttons, context=context, add_back=True, other_buttons=other_buttons))
+            except BadRequest:
+                await update.message.reply_text("Se ha producido un error al enviar el archivo. Puede intentar editar la clase práctica para enviar otro archivo.\n\n" + text, parse_mode="HTML", reply_markup=paginated_keyboard(buttons, context=context, add_back=True, other_buttons=other_buttons))
+        else:
+            await update.message.reply_text(text, parse_mode="HTML", reply_markup=paginated_keyboard(buttons, context=context, add_back=True, other_buttons=other_buttons))
+    return states.T_CP_INFO
 
 async def exercise_selected(update: Update, context: ContextTypes):
     pass
@@ -478,6 +641,18 @@ teacher_practic_classes_conv = ConversationHandler(
         states.T_CP_EDIT_DESCRIPTION: [MessageHandler(filters.TEXT & ~filters.COMMAND, practic_class_edit_description_done)],
         states.T_CP_EDIT_FILE: [MessageHandler(filters.Document.ALL | filters.PHOTO, practic_class_edit_file_done)],
         states.T_CP_DELETE: [CallbackQueryHandler(practic_class_delete_confirm, pattern=r"^practic_class_delete_confirm$")],
+
+        states.T_CP_CREATE_EXERCISE_NAME: [MessageHandler(filters.TEXT & ~filters.COMMAND, practic_class_exercise_name)],
+        states.T_CP_CREATE_EXERCISE_VALUE: [MessageHandler(filters.TEXT & ~filters.COMMAND, practic_class_exercise_value)],
+        states.T_CP_CREATE_EXERCISE_DESCRIPTION: [
+            MessageHandler(filters.TEXT & ~filters.COMMAND, practic_class_exercise_description),
+            CallbackQueryHandler(practic_class_exercise_description, pattern=r"^continue$"),
+            ],
+        states.T_CP_CREATE_EXERCISE_FILE: [
+            MessageHandler(filters.Document.ALL | filters.PHOTO, practic_class_exercise_file),
+            CallbackQueryHandler(practic_class_exercise_file, pattern=r"^continue$"),
+            ],
+        states.T_CP_CREATE_EXERCISE_PARTIAL_CREDITS: [CallbackQueryHandler(practic_class_exercise_partial_credits, pattern=r"^(yes|no$)")],
         
     },
     fallbacks=[
