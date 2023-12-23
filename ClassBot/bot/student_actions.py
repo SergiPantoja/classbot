@@ -15,7 +15,7 @@ from bot.utils import states, keyboards
 from bot.utils.inline_keyboard_pagination import paginated_keyboard, paginator_handler
 from bot.utils.pagination import Paginator, text_paginator_handler
 from bot.utils.clean_context import clean_student_context
-from sql import user_sql, student_sql, teacher_sql, classroom_sql, course_sql, pending_sql, token_type_sql, teacher_classroom_sql, token_sql, student_token_sql, conference_sql
+from sql import user_sql, student_sql, practic_class_sql, classroom_sql, course_sql, pending_sql, token_type_sql, teacher_classroom_sql, token_sql, student_token_sql, conference_sql, activity_type_sql
 from bot.student_inventory import back_to_student_menu
 
 
@@ -194,8 +194,19 @@ async def select_intervention(update: Update, context: ContextTypes):
             return states.S_ACTIONS_SELECT_INTERVENTION
 
         elif intervention_type == "practic_class":
-            #TODO
-            pass
+            practic_classes = practic_class_sql.get_practic_classes(classroom_id=classroom_id, include_hidden=True)
+            if not practic_classes:
+                await query.edit_message_text(
+                    "No hay clases prácticas en esta aula",
+                    reply_markup=InlineKeyboardMarkup(keyboards.STUDENT_ACTIONS),
+                )
+                return states.S_ACTIONS_SELECT_ACTION
+            buttons = [InlineKeyboardButton(f"{i}. {token_type_sql.get_token_type(activity_type_sql.get_activity_type(practic_class.activity_type_id).token_type_id).type} - {datetime.date(practic_class.date.year, practic_class.date.month, practic_class.date.day)}", callback_data=f"practic_class#{practic_class.id}") for i, practic_class in enumerate(practic_classes, start=1)]
+            await query.edit_message_text(
+                "Seleccione la clase práctica en la que desea intervenir",
+                reply_markup=paginated_keyboard(buttons, context=context, add_back=True)
+            )
+            return states.S_ACTIONS_SELECT_INTERVENTION
 
     elif query.data.startswith("conference#"):
         if "intervention" not in context.user_data:
@@ -213,8 +224,11 @@ async def select_intervention(update: Update, context: ContextTypes):
             context.user_data["intervention"] = {
                 "practic_class_id": int(query.data.split("#")[1])
             }
-        #TODO
-        pass
+        await query.edit_message_text(
+            "Envíe un mensaje con los detalles de su intervención",
+            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Atrás", callback_data="back")]]),
+        )
+        return states.S_ACTIONS_SEND_INTERVENTION
 async def send_intervention(update: Update, context: ContextTypes):
     """ Creates a new intervention pending """
     # get necessary data
@@ -227,8 +241,8 @@ async def send_intervention(update: Update, context: ContextTypes):
         conference = conference_sql.get_conference(context.user_data["intervention"]["conference_id"])
         text = f"{user.fullname} ha intervenido en la conferencia {conference.name}:\n" + f"{update.message.text if update.message.text else ''}" + f"{update.message.caption if update.message.caption else ''}"
     elif "practic_class_id" in context.user_data["intervention"]:
-        #TODO
-        pass
+        practic_class = practic_class_sql.get_practic_class(context.user_data["intervention"]["practic_class_id"])
+        text = f"{user.fullname} ha intervenido en la clase práctica {token_type_sql.get_token_type(activity_type_sql.get_activity_type(practic_class.activity_type_id).token_type_id).type}:\n" + f"{update.message.text if update.message.text else ''}" + f"{update.message.caption if update.message.caption else ''}"
 
     # create pending in database
     pending_sql.add_pending(student.id, classroom_id, token_type_id, text=text)
