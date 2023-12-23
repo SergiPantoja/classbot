@@ -249,8 +249,9 @@ async def practic_class_selected(update: Update, context: ContextTypes):
 
     exercises = practic_class_exercises_sql.get_practic_class_exercises_by_practic_class_id(practic_class_id)
     if exercises:
-        buttons = [InlineKeyboardButton(f"{i}. {token_sql.get_token(activity_sql.get_activity(exercise.activity_id).token_id).name} - ({exercise.value})", callback_data=f"exercise#{exercise.id}") for i, exercise in enumerate(exercises, start=1)]
-        #TODO: sort exercises by name
+        # sort exercises by name
+        exercises.sort(key=lambda x: token_sql.get_token(activity_sql.get_activity(x.activity_id).token_id).name)
+        buttons = [InlineKeyboardButton(f"{i}. {token_sql.get_token(activity_sql.get_activity(exercise.activity_id).token_id).name} - ({exercise.value})", callback_data=f"exercise#{exercise.id}") for i, exercise in enumerate(exercises, start=1)]    
         other_buttons = [
             InlineKeyboardButton("Crear ejercicio", callback_data=f"create_exercise#{practic_class_id}"),
             InlineKeyboardButton("Cambiar fecha", callback_data="practic_class_change_date"),
@@ -546,9 +547,9 @@ async def practic_class_exercise_partial_credits(update: Update, context: Contex
     text += "<b>Ejercicios:</b>\n"
 
     exercises = practic_class_exercises_sql.get_practic_class_exercises_by_practic_class_id(practic_class_id)
-
+    # sort exercises by name
+    exercises.sort(key=lambda x: token_sql.get_token(activity_sql.get_activity(x.activity_id).token_id).name)
     buttons = [InlineKeyboardButton(f"{i}. {token_sql.get_token(activity_sql.get_activity(exercise.activity_id).token_id).name} - ({exercise.value})", callback_data=f"exercise#{exercise.id}") for i, exercise in enumerate(exercises, start=1)]
-    #TODO: sort exercises by name
     other_buttons = [
         InlineKeyboardButton("Crear ejercicio", callback_data=f"create_exercise#{practic_class_id}"),
         InlineKeyboardButton("Cambiar fecha", callback_data="practic_class_change_date"),
