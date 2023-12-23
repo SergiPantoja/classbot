@@ -24,7 +24,15 @@ def get_pendings_of_student_by_type(student_id: int, classroom_id: int, token_ty
     """ Returns a list of pendings of the given student with the given token_type. """
     with session() as s:
         return s.query(Pending).filter(Pending.classroom_id == classroom_id, Pending.student_id == student_id, Pending.token_type_id == token_type_id).order_by(Pending.creation_date.desc()).all()
-        
+
+def get_pending_of_student_by_token(student_id: int, classroom_id: int, token_id: int) -> Pending | None:
+    """ Returns the pending of the given student with the given token. None if not found. 
+        Should only return one pending.
+        This is used to check if a student has already sent a pending with the same token.
+    """
+    with session() as s:
+        return s.query(Pending).filter(Pending.classroom_id == classroom_id, Pending.student_id == student_id, Pending.token_id == token_id).first()
+
 def get_last_pending_of_student_by_type(student_id: int,  classroom_id: int, token_type_id: int) -> Pending | None:
     """ Returns the last pending of the given student with the given token_type. None if not found. """
     with session() as s:
