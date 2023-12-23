@@ -15,3 +15,5 @@ from models.student_guild import Student_guild
 from models.guild_token import Guild_token
 from models.activity_type import Activity_type
 from models.activity import Activity
+from models.practic_class import Practic_class
+from models.practic_class_exercise import Practic_class_exercise

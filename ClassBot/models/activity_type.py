@@ -9,6 +9,7 @@ from models.base import Base
 if TYPE_CHECKING:
     from models.token_type import Token_type
     from models.activity import Activity
+    from models.practic_class import Practic_class
 
 class Activity_type(Base):
     __tablename__ = 'activity_type'
@@ -24,6 +25,8 @@ class Activity_type(Base):
     token_type: Mapped["Token_type"] = relationship(back_populates='activity_type')   # To delete activity types, delete the associated token types
     # one-to-many relationship with activity (delete activity if activity_type is deleted)
     activity: Mapped["Activity"] = relationship(back_populates='activity_type', cascade='all, delete-orphan')
+    # one-to-one relationship with practic_class (delete practic_class if activity_type is deleted)
+    practic_class: Mapped[Optional["Practic_class"]] = relationship(back_populates='activity_type', cascade='all, delete-orphan')
 
     __table_args__ = (
         # Unique constraint for token_type_id
