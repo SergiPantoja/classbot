@@ -92,7 +92,10 @@ TEACHER_FILTER_PENDING = [
         InlineKeyboardButton("Miscelánea", callback_data="filter_default:Miscelaneo"),
     ],
     [
+        InlineKeyboardButton("Clases prácticas", callback_data="filter_practic_class"),
         InlineKeyboardButton("Otras actividades", callback_data="filter_other_activities"),
+    ],
+    [
         InlineKeyboardButton("Atrás", callback_data="back"),
     ]
 ]
