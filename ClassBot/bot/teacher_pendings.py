@@ -15,7 +15,7 @@ from bot.utils import states, keyboards
 from bot.utils.inline_keyboard_pagination import paginated_keyboard, paginator_handler
 from bot.utils.pagination import Paginator, text_paginator_handler
 from bot.utils.clean_context import clean_teacher_context
-from sql import user_sql, teacher_sql, classroom_sql, course_sql, pending_sql, token_type_sql, teacher_classroom_sql, token_sql, student_token_sql, guild_sql, guild_token_sql, student_sql, activity_sql, activity_type_sql
+from sql import user_sql, teacher_sql, classroom_sql, course_sql, pending_sql, token_type_sql, teacher_classroom_sql, token_sql, student_token_sql, guild_sql, guild_token_sql, student_sql, activity_sql, activity_type_sql, practic_class_sql, practic_class_exercises_sql
 from bot.teacher_settings import back_to_teacher_menu
 
 
@@ -464,8 +464,52 @@ async def manage_pending(update: Update, context: ContextTypes):
             )
             return ConversationHandler.END
 
-        # if practic class excercise :
-
+        # if practic class excercise (check if the pending has a token_id and if it is a practic class token)
+        elif pending.token_id:
+            activity = activity_sql.get_activity_by_token_id(pending.token_id)
+            if activity:
+                exercise = practic_class_exercises_sql.get_practic_class_exercise_by_activity_id(activity.id)
+                practic_class = practic_class_sql.get_practic_class(exercise.practic_class_id)
+                if exercise:    # it is a practic class exercise
+                    if exercise.partial_credits_allowed:
+                        # ask for value of partial credits
+                        if query.message.caption:
+                            await query.edit_message_caption(
+                                f"Ingrese la cantidad de créditos a otorgar por el ejercicio {token_sql.get_token(pending.token_id).name} de {pending_type} de {user_sql.get_user(pending.student_id).fullname}. Puede agregar un comentario después de la cantidad de créditos después de un espacio.\n\n",
+                                reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Atrás", callback_data="back")]]),
+                            )
+                        else:
+                            await query.edit_message_text(
+                                f"Ingrese la cantidad de créditos a otorgar por el ejercicio {token_sql.get_token(pending.token_id).name} de {pending_type} de {user_sql.get_user(pending.student_id).fullname}. Puede agregar un comentario después de la cantidad de créditos después de un espacio.\n\n",
+                                reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Atrás", callback_data="back")]]),
+                            )
+                        return states.T_PENDING_APPROVE_PARTIAL_CREDITS
+                    else:
+                        # give full credits. X2 if pending created before practic class date
+                        student = student_sql.get_student(pending.student_id)
+                        token = token_sql.get_token(activity_sql.get_activity(exercise.activity_id).token_id)
+                        teacher = teacher_sql.get_teacher(user_sql.get_user_by_chatid(update.effective_user.id).id)
+                        value = exercise.value * 2 if pending.creation_date < practic_class.date else exercise.value
+                        student_token_sql.add_student_token(student.id, token.id, value, teacher_id=teacher.id)
+                        logger.info(f"Token {token.id} assigned to student {student.id} with value {value}")
+                        # approve pending
+                        pending_sql.approve_pending(pending_id, user_sql.get_user_by_chatid(update.effective_user.id).id)
+                        logger.info(f"Pending {pending_id} approved")
+                        # notify student
+                        text = f"{user_sql.get_user_by_chatid(update.effective_user.id).fullname} ha aprobado tu ejercicio {token.name} de {pending_type} con {value} créditos.\n\nTu {token.name}:\n{pending.text}"
+                        try:
+                            await context.bot.send_message(
+                                chat_id=user_sql.get_user(pending.student_id).telegram_chatid,
+                                text=text,
+                            )
+                        except BadRequest:
+                            logger.error(f"Error sending message to student {user_sql.get_user(pending.student_id).fullname} (chat_id: {user_sql.get_user(pending.student_id).telegram_chatid})")
+                        await query.message.reply_text(
+                            text="El pendiente ha sido aprobado.",
+                            reply_markup=ReplyKeyboardMarkup(keyboards.TEACHER_MAIN_MENU, one_time_keyboard=True, resize_keyboard=True),
+                        )
+                        return ConversationHandler.END
+        
         # Ask for value and comment, then create a token if it doesn't exist
         if query.message.text:
             await query.edit_message_text(
@@ -488,7 +532,7 @@ async def manage_pending(update: Update, context: ContextTypes):
             )
         else:
             await query.edit_message_caption(
-                text=f"Puede ingresar una razón para el rechazo de {pending_type} de {user_sql.get_user(pending.student_id).fullname} o presione continuar. Se le notificará al estudiante.",
+                caption=f"Puede ingresar una razón para el rechazo de {pending_type} de {user_sql.get_user(pending.student_id).fullname} o presione continuar. Se le notificará al estudiante.",
                 reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Continuar", callback_data="pending_reject_continue")], [InlineKeyboardButton("Atrás", callback_data="back")]]),
         )
         return states.T_PENDING_REJECT
@@ -506,7 +550,7 @@ async def manage_pending(update: Update, context: ContextTypes):
                 )
             else:
                 await query.edit_message_caption(
-                    text="Seleccione un profesor para asignarle el pendiente:",
+                    caption="Seleccione un profesor para asignarle el pendiente:",
                     reply_markup=paginated_keyboard(buttons, context=context, add_back=True),
             )
             return states.T_PENDING_ASSIGN_TEACHER
@@ -520,7 +564,7 @@ async def manage_pending(update: Update, context: ContextTypes):
             else:
                 old_text = query.message.caption
                 await query.edit_message_caption(
-                    text=old_text + "\n\nNo hay otros profesores en este aula.",
+                    caption=old_text + "\n\nNo hay otros profesores en este aula.",
                     reply_markup=InlineKeyboardMarkup(keyboards.TEACHER_PENDING_OPTIONS),
                 )
             return states.T_PENDING_OPTIONS
@@ -534,7 +578,7 @@ async def manage_pending(update: Update, context: ContextTypes):
             )
         else:
             await query.edit_message_caption(
-                text=f"Ingrese el mensaje que desea enviar al estudiante {user_sql.get_user(pending.student_id).fullname} para pedirle más información sobre el {pending_type}.",
+                caption=f"Ingrese el mensaje que desea enviar al estudiante {user_sql.get_user(pending.student_id).fullname} para pedirle más información sobre el {pending_type}.",
                 reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Atrás", callback_data="back")]]),
         )
         return states.T_PENDING_MORE_INFO
@@ -695,6 +739,59 @@ async def approve_pending(update: Update, context: ContextTypes):
     )
     return ConversationHandler.END
 
+async def approve_partial_credits(update: Update, context: ContextTypes):
+    """ Receives the partial credits value and comment from the teacher.
+    Validates the input and approves the pending
+    """
+    text = update.message.text
+    # get value and comment
+    try:
+        partial_credits = int(text.split(" ")[0])
+        comment = text.split(" ", 1)[1]
+    except:
+        partial_credits = int(text)
+        comment = None
+
+    pending_id = context.user_data["pending"]["id"]
+    pending = pending_sql.get_pending(pending_id)
+    pending_type = token_type_sql.get_token_type(pending.token_type_id).type
+
+    exercise = practic_class_exercises_sql.get_practic_class_exercise_by_activity_id(activity_sql.get_activity_by_token_id(pending.token_id).id)
+
+    if int(partial_credits) < 0 or int(partial_credits) > exercise.value:
+        await update.message.reply_text(
+            f"El valor debe estar entre 0 y el valor del ejercicio: {exercise.value}",
+            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Atrás", callback_data="back")]])
+        )
+        return states.T_PENDING_APPROVE_PARTIAL_CREDITS
+    
+    practic_class = practic_class_sql.get_practic_class(exercise.practic_class_id)
+    student = student_sql.get_student(pending.student_id)
+    token = token_sql.get_token(activity_sql.get_activity(exercise.activity_id).token_id)
+    teacher = teacher_sql.get_teacher(user_sql.get_user_by_chatid(update.effective_user.id).id)
+    value = partial_credits * 2 if pending.creation_date < practic_class.date else partial_credits
+    student_token_sql.add_student_token(student.id, token.id, value, teacher_id=teacher.id)
+    logger.info(f"Token {token.id} assigned to student {student.id} with value {value}")
+    # approve pending
+    pending_sql.approve_pending(pending_id, user_sql.get_user_by_chatid(update.effective_user.id).id)
+    logger.info(f"Pending {pending_id} approved")
+    # notify student
+    text = f"{user_sql.get_user_by_chatid(update.effective_user.id).fullname} ha aprobado tu ejercicio {token.name} de {pending_type} con {value} créditos.\n\nTu {token.name}:\n{pending.text}"
+    if comment:
+            text += f"\n\nComentario:\n{comment}"
+    try:
+        await context.bot.send_message(
+            chat_id=user_sql.get_user(pending.student_id).telegram_chatid,
+            text=text,
+        )
+    except BadRequest:
+        logger.error(f"Error sending message to student {user_sql.get_user(pending.student_id).fullname} (chat_id: {user_sql.get_user(pending.student_id).telegram_chatid})")
+    await update.message.reply_text(
+        text="El pendiente ha sido aprobado.",
+        reply_markup=ReplyKeyboardMarkup(keyboards.TEACHER_MAIN_MENU, one_time_keyboard=True, resize_keyboard=True),
+    )
+    return ConversationHandler.END
+
 async def more_info_pending(update: Update, context: ContextTypes):
     """ Updates the more_info field of the pending to PENDING, adds the message
     from the teacher to the pending text after a double line break and notifies
@@ -785,6 +882,7 @@ teacher_pendings_conv = ConversationHandler(
             CallbackQueryHandler(approve_pending, pattern=r"^pending_approve_confirm$"),
             MessageHandler(filters.Regex(r"^\d+(\s.*)?") & ~filters.COMMAND, approve_pending),
         ],
+        states.T_PENDING_APPROVE_PARTIAL_CREDITS: [MessageHandler(filters.Regex(r"^\d+(\s.*)?") & ~filters.COMMAND, approve_partial_credits)],
         states.T_PENDING_MORE_INFO: [
             MessageHandler((filters.TEXT | filters.PHOTO | filters.Document.ALL) & ~filters.COMMAND, more_info_pending),
         ],
