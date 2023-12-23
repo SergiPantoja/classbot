@@ -8,7 +8,7 @@ from telegram.ext import (
 )
 
 from utils.logger import logger
-from bot.utils import states, keyboards
+from bot.utils import states, keyboards, bot_text
 from bot.utils.inline_keyboard_pagination import paginated_keyboard, paginator_handler
 from bot.utils.clean_context import clean_teacher_context
 from sql import user_sql, teacher_sql, classroom_sql, course_sql, student_sql, student_classroom_sql, teacher_classroom_sql, student_guild_sql
@@ -33,15 +33,15 @@ async def back_to_teacher_menu(update: Update, context: ContextTypes):
     teacher = teacher_sql.get_teacher(user_sql.get_user_by_chatid(update.message.chat_id).id)
     # get active classroom from db
     classroom = classroom_sql.get_classroom(teacher.active_classroom_id)
-    # get course name
-    course_name = course_sql.get_course(classroom.course_id).name
 
     await update.message.reply_text(
-        f"Bienvenido profe {user_sql.get_user_by_chatid(update.message.chat_id).fullname}!\n\n"
-        f"Curso: {course_name}\n"
-        f"Aula: {classroom.name}\n"
-        f"Menu en construcción...",
+        bot_text.main_menu(
+            fullname=user_sql.get_user(teacher.id).fullname,
+            role="teacher",
+            classroom_name=classroom.name,
+        ),
         reply_markup=ReplyKeyboardMarkup(keyboards.TEACHER_MAIN_MENU, one_time_keyboard=True, resize_keyboard=True),
+        parse_mode="HTML",
     )
     # Sanitize context.user_data
     clean_teacher_context(context)
@@ -194,7 +194,7 @@ async def choose_option(update: Update, context: ContextTypes):
             "¿Estás seguro que deseas eliminar el curso?\n"
             "Esta acción no se puede deshacer, perderá toda la información de "
             "aulas y estudiantes asociados al curso.",
-            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Eliminar", callback_data="delete_course_confirm")], [InlineKeyboardButton("Atrás", callback_data="option_edit_course_back")]]),
+            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("➖ Eliminar", callback_data="delete_course_confirm")], [InlineKeyboardButton("🔙", callback_data="option_edit_course_back")]]),
         )
         return states.DELETE_COURSE_CONFIRM
 
@@ -380,7 +380,7 @@ async def edit_classroom_choose_option(update: Update, context: ContextTypes):
         # asks to choose between teacher and student password
         await query.edit_message_text(
             "Cuál contraseña desea cambiar?",
-            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Profesor", callback_data="option_edit_teacher_password")], [InlineKeyboardButton("Estudiante", callback_data="option_edit_student_password")], [InlineKeyboardButton("Atrás", callback_data="option_edit_classroom_back")]]),
+            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🧑‍🏫 Profesor", callback_data="option_edit_teacher_password")], [InlineKeyboardButton("🧑‍🎓 Estudiante", callback_data="option_edit_student_password")], [InlineKeyboardButton("🔙", callback_data="option_edit_classroom_back")]]),
         )
         return states.EDIT_CLASSROOM_CHOOSE_OPTION
     elif option == "option_edit_teacher_password":
@@ -478,7 +478,7 @@ async def edit_classroom_choose_option(update: Update, context: ContextTypes):
             "¿Estás seguro que deseas eliminar el aula?\n"
             "Esta acción no se puede deshacer, perderá toda la información"
             "asociada al aula.\n\n",
-            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Eliminar", callback_data="delete_classroom_confirm")], [InlineKeyboardButton("Atrás", callback_data="option_edit_classroom_back")]]),
+            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("➖ Eliminar", callback_data="delete_classroom_confirm")], [InlineKeyboardButton("🔙", callback_data="option_edit_classroom_back")]]),
             )
             return states.EDIT_CLASSROOM_DELETE_CONFIRM
         else:
@@ -690,7 +690,7 @@ edit_course_conv = ConversationHandler(
             ],
     },
     fallbacks=[
-        MessageHandler(filters.Regex("^Atrás$"), back_to_teacher_menu),
+        MessageHandler(filters.Regex("^🔙$"), back_to_teacher_menu),
         CallbackQueryHandler(edit_course_back, pattern=r"^(option_edit_course_back|back)$"),
         ],
     allow_reentry=True,
@@ -717,7 +717,7 @@ edit_classroom_conv = ConversationHandler(
         states.EDIT_CLASSROOM_DELETE_CONFIRM: [CallbackQueryHandler(edit_classroom_delete, pattern=r"^delete_classroom_confirm")],
     },
     fallbacks=[
-        MessageHandler(filters.Regex("^Atrás$"), back_to_teacher_menu),
+        MessageHandler(filters.Regex("^🔙$"), back_to_teacher_menu),
         CallbackQueryHandler(edit_classroom_back, pattern=r"^(option_edit_classroom_back|back)$"),
     ],
     allow_reentry=True,

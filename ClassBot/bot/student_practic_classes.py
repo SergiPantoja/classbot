@@ -12,7 +12,7 @@ from telegram.ext import (
 )
 
 from utils.logger import logger
-from bot.utils import states, keyboards
+from bot.utils import states, keyboards, bot_text
 from bot.utils.inline_keyboard_pagination import paginated_keyboard, paginator_handler
 from bot.utils.pagination import Paginator, text_paginator_handler
 from bot.utils.clean_context import clean_student_context
@@ -107,7 +107,7 @@ async def practic_class_selected(update: Update, context: ContextTypes):
         exercises.sort(key=lambda x: token_sql.get_token(activity_sql.get_activity(x.activity_id).token_id).name)
         buttons = [InlineKeyboardButton(f"{i}. {token_sql.get_token(activity_sql.get_activity(exercise.activity_id).token_id).name} - ({exercise.value})", callback_data=f"exercise#{exercise.id}") for i, exercise in enumerate(exercises, start=1)]    
         other_buttons = [
-            InlineKeyboardButton("Proponer nuevo título", callback_data="new_title_proposal"),
+            InlineKeyboardButton("📤 Proponer nuevo título", callback_data="new_title_proposal"),
         ]
         if activity_type.FileID:
             try:
@@ -125,13 +125,13 @@ async def practic_class_selected(update: Update, context: ContextTypes):
         if activity_type.FileID:
             try:
                 try:
-                    await query.message.reply_photo(activity_type.FileID, caption=text, parse_mode="HTML", reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Proponer nuevo título", callback_data="new_title_proposal")], [InlineKeyboardButton("Atrás", callback_data="back")]]))
+                    await query.message.reply_photo(activity_type.FileID, caption=text, parse_mode="HTML", reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("📤 Proponer nuevo título", callback_data="new_title_proposal")], [InlineKeyboardButton("🔙", callback_data="back")]]))
                 except BadRequest:
-                    await query.message.reply_document(activity_type.FileID, caption=text, parse_mode="HTML", reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Proponer nuevo título", callback_data="new_title_proposal")], [InlineKeyboardButton("Atrás", callback_data="back")]]))
+                    await query.message.reply_document(activity_type.FileID, caption=text, parse_mode="HTML", reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("📤 Proponer nuevo título", callback_data="new_title_proposal")], [InlineKeyboardButton("🔙", callback_data="back")]]))
             except BadRequest:
-                await query.edit_message_text("Se ha producido un error al enviar el archivo. Puede intentar editar la clase práctica para enviar otro archivo.\n\n" + text, parse_mode="HTML", reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Proponer nuevo título", callback_data="new_title_proposal")], [InlineKeyboardButton("Atrás", callback_data="back")]]))
+                await query.edit_message_text("Se ha producido un error al enviar el archivo. Puede intentar editar la clase práctica para enviar otro archivo.\n\n" + text, parse_mode="HTML", reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("📤 Proponer nuevo título", callback_data="new_title_proposal")], [InlineKeyboardButton("🔙", callback_data="back")]]))
         else:
-            await query.edit_message_text(text, parse_mode="HTML", reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Proponer nuevo título", callback_data="new_title_proposal")], [InlineKeyboardButton("Atrás", callback_data="back")]]))
+            await query.edit_message_text(text, parse_mode="HTML", reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("📤 Proponer nuevo título", callback_data="new_title_proposal")], [InlineKeyboardButton("🔙", callback_data="back")]]))
         return states.S_SELECT_PRACTIC_CLASS
 
 async def practic_class_new_title_proposal(update: Update, context: ContextTypes):
@@ -187,16 +187,16 @@ async def practic_class_exercise_selected(update: Update, context: ContextTypes)
     if activity.FileID:
         try:
             try:
-                await query.message.reply_photo(activity.FileID, caption=text, parse_mode="HTML", reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Enviar solución", callback_data="send_submission")], [InlineKeyboardButton("Atrás", callback_data="back")]]))
+                await query.message.reply_photo(activity.FileID, caption=text, parse_mode="HTML", reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("📤 Enviar solución", callback_data="send_submission")], [InlineKeyboardButton("🔙", callback_data="back")]]))
             except BadRequest:
-                await query.message.reply_document(activity.FileID, caption=text, parse_mode="HTML", reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Enviar solución", callback_data="send_submission")], [InlineKeyboardButton("Atrás", callback_data="back")]]))
+                await query.message.reply_document(activity.FileID, caption=text, parse_mode="HTML", reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("📤 Enviar solución", callback_data="send_submission")], [InlineKeyboardButton("🔙", callback_data="back")]]))
         except BadRequest:
-            await query.edit_message_text("Se ha producido un error al enviar el archivo.\n\n" + text, parse_mode="HTML", reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Enviar solución", callback_data="send_submission")], [InlineKeyboardButton("Atrás", callback_data="back")]]))
+            await query.edit_message_text("Se ha producido un error al enviar el archivo.\n\n" + text, parse_mode="HTML", reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("📤 Enviar solución", callback_data="send_submission")], [InlineKeyboardButton("🔙", callback_data="back")]]))
     else:
         if query.message.caption:
-            await query.message.reply_text(text, parse_mode="HTML", reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Enviar solución", callback_data="send_submission")], [InlineKeyboardButton("Atrás", callback_data="back")]]))
+            await query.message.reply_text(text, parse_mode="HTML", reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("📤 Enviar solución", callback_data="send_submission")], [InlineKeyboardButton("🔙", callback_data="back")]]))
         else:
-            await query.edit_message_text(text, parse_mode="HTML", reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Enviar solución", callback_data="send_submission")], [InlineKeyboardButton("Atrás", callback_data="back")]]))
+            await query.edit_message_text(text, parse_mode="HTML", reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("📤 Enviar solución", callback_data="send_submission")], [InlineKeyboardButton("🔙", callback_data="back")]]))
     return states.S_EXERCISE_SEND_SUBMISSION
 
 async def practic_class_exercise_send_submission(update: Update, context: ContextTypes):
@@ -205,9 +205,9 @@ async def practic_class_exercise_send_submission(update: Update, context: Contex
     await query.answer()
 
     if query.message.caption:
-        await query.edit_message_caption(query.message.caption + "\n\nEnvía tu solución. Puedes enviar texto, una imagen o un archivo", reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Atrás", callback_data="back")]]),)
+        await query.edit_message_caption(query.message.caption + "\n\nEnvía tu solución. Puedes enviar texto, una imagen o un archivo", reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔙", callback_data="back")]]),)
     else:
-        await query.edit_message_text(query.message.text + "\n\nEnvía tu solución. Puedes enviar texto, una imagen o un archivo", reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Atrás", callback_data="back")]]),)
+        await query.edit_message_text(query.message.text + "\n\nEnvía tu solución. Puedes enviar texto, una imagen o un archivo", reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔙", callback_data="back")]]),)
     return states.S_EXERCISE_SEND_SUBMISSION_DONE
 
 async def practic_class_exercise_send_submission_done(update: Update, context: ContextTypes):
@@ -257,7 +257,7 @@ async def practic_class_exercise_send_submission_done(update: Update, context: C
         else:
             await update.message.reply_text(
                 "Ya has enviado una solución para este ejercicio. ¿Deseas actualizarla?",
-                reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Sí", callback_data="delete_pending")], [InlineKeyboardButton("No", callback_data="back")]]),
+                reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🟢 Sí", callback_data="delete_pending")], [InlineKeyboardButton("🔴 No", callback_data="back")]]),
             )
             return states.S_EXERCISE_SEND_SUBMISSION_DONE
     
@@ -286,13 +286,15 @@ async def student_practic_classes_back(update: Update, context: ContextTypes):
 
     student = student_sql.get_student(user_sql.get_user_by_chatid(update.effective_user.id).id)
     classroom = classroom_sql.get_classroom(student.active_classroom_id)
-    course_name = course_sql.get_course(classroom.course_id).name
 
     await query.message.reply_text(
-        f"Menú principal"
-        f"Curso: {course_name}\n"
-        f"Aula: {classroom.name}\n",
+        bot_text.main_menu(
+            fullname=user_sql.get_user(student.id).fullname,
+            role="student",
+            classroom_name=classroom.name,
+        ),
         reply_markup=ReplyKeyboardMarkup(keyboards.STUDENT_MAIN_MENU, one_time_keyboard=True, resize_keyboard=True),
+        parse_mode="HTML",
     )
 
     if "practic_class" in context.user_data:
@@ -324,7 +326,7 @@ student_practic_classes_conv = ConversationHandler(
     },
     fallbacks=[
         CallbackQueryHandler(student_practic_classes_back, pattern=r"^back$"),
-        MessageHandler(filters.Regex("^Atrás$"), back_to_student_menu),
+        MessageHandler(filters.Regex("^🔙$"), back_to_student_menu),
     ],
     allow_reentry=True,
 )

@@ -65,6 +65,6 @@ async def log_out(update: Update, context: ContextTypes):
 
 
 # Handlers
-settings_handler = MessageHandler(filters.Regex("^Opciones$"), settings)
-back_to_menu_handler = MessageHandler(filters.Regex("^Atrás$"), back_to_menu)
-log_out_handler = MessageHandler(filters.Regex("^Salir$"), log_out)
+settings_handler = MessageHandler(filters.Regex("^⚙️ Opciones$"), settings)
+back_to_menu_handler = MessageHandler(filters.Regex("^🔙$"), back_to_menu)
+log_out_handler = MessageHandler(filters.Regex("^🚪 Salir$"), log_out)

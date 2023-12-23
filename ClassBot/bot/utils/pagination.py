@@ -49,7 +49,7 @@ class Paginator():
         
         # add back button
         if self.add_back:
-            keyboard.append([InlineKeyboardButton("Atrás", callback_data="back")])
+            keyboard.append([InlineKeyboardButton("🔙", callback_data="back")])
         
         return InlineKeyboardMarkup(keyboard)
     

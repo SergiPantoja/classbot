@@ -11,7 +11,7 @@ from telegram.ext import (
 )
 
 from utils.logger import logger
-from bot.utils import states, keyboards
+from bot.utils import states, keyboards, bot_text
 from bot.utils.inline_keyboard_pagination import paginated_keyboard, paginator_handler
 from bot.utils.pagination import Paginator, text_paginator_handler
 from bot.utils.clean_context import clean_teacher_context
@@ -57,7 +57,7 @@ async def teacher_pendings(update: Update, context: ContextTypes):
         # create a list of lines for each pending
         lines = [f"{i}. {token_sql.get_token(pending.token_id).name + ' de' if pending.token_id else ''} {token_type_sql.get_token_type(pending.token_type_id).type} - {user_sql.get_user(pending.student_id).fullname} Fecha: {datetime.date(pending.creation_date.year, pending.creation_date.month, pending.creation_date.day)} -> /pending_{pending.id} {'(Esperando más información)' if pending.more_info == 'PENDING' else ''}{'(Nueva información recibida)' if pending.more_info == 'SENT' else ''}" for i, pending in enumerate(pendings, start=1)]
         # create new paginator using this lines
-        other_buttons = [InlineKeyboardButton("Mis pendientes", callback_data="direct_pendings"), InlineKeyboardButton("Filtrar", callback_data="filter_pendings"), InlineKeyboardButton("Historial", callback_data="history_pendings")]
+        other_buttons = [InlineKeyboardButton("🗂 Mis pendientes", callback_data="direct_pendings"), InlineKeyboardButton("🔽 Filtrar", callback_data="filter_pendings"), InlineKeyboardButton("🗓 Historial", callback_data="history_pendings")]
         paginator = Paginator(lines, items_per_page=10, text_before="Pendientes del aula:", add_back=True, other_buttons=other_buttons)
         # save paginator in user_data
         context.user_data["paginator"] = paginator
@@ -82,7 +82,7 @@ async def teacher_pendings(update: Update, context: ContextTypes):
             # create a list of lines for each pending
             lines = [f"{i}. {token_sql.get_token(pending.token_id).name + ' de' if pending.token_id else ''} {token_type_sql.get_token_type(pending.token_type_id).type} - {user_sql.get_user(pending.student_id).fullname} Fecha: {datetime.date(pending.creation_date.year, pending.creation_date.month, pending.creation_date.day)} -> /pending_{pending.id} {'(Esperando más información)' if pending.more_info == 'PENDING' else ''}{'(Nueva información recibida)' if pending.more_info == 'SENT' else ''}" for i, pending in enumerate(direct_pendings, start=1)]
             # create new paginator using this lines
-            other_buttons = [InlineKeyboardButton("Del aula", callback_data="all_pendings"), InlineKeyboardButton("Filtrar", callback_data="filter_pendings"), InlineKeyboardButton("Historial", callback_data="history_pendings")]
+            other_buttons = [InlineKeyboardButton("🗃 Del aula", callback_data="all_pendings"), InlineKeyboardButton("🔽 Filtrar", callback_data="filter_pendings"), InlineKeyboardButton("🗓 Historial", callback_data="history_pendings")]
             paginator = Paginator(lines, items_per_page=10, text_before="Aquí están tus pendientes directos, no hay más pendientes en el aula:", add_back=True, other_buttons=other_buttons)
             # save paginator in user_data
             context.user_data["paginator"] = paginator
@@ -130,7 +130,7 @@ async def teacher_direct_pendings(update: Update, context: ContextTypes):
         # create a list of lines for each pending
         lines = [f"{i}. {token_sql.get_token(pending.token_id).name + ' de' if pending.token_id else ''} {token_type_sql.get_token_type(pending.token_type_id).type} - {user_sql.get_user(pending.student_id).fullname} Fecha: {datetime.date(pending.creation_date.year, pending.creation_date.month, pending.creation_date.day)} -> /pending_{pending.id} {'(Esperando más información)' if pending.more_info == 'PENDING' else ''}{'(Nueva información recibida)' if pending.more_info == 'SENT' else ''}" for i, pending in enumerate(pendings, start=1)]
         # create new paginator using this lines
-        other_buttons = [InlineKeyboardButton("Del aula", callback_data="all_pendings"), InlineKeyboardButton("Filtrar", callback_data="filter_pendings"), InlineKeyboardButton("Historial", callback_data="history_pendings")]
+        other_buttons = [InlineKeyboardButton("🗃 Del aula", callback_data="all_pendings"), InlineKeyboardButton("🔽 Filtrar", callback_data="filter_pendings"), InlineKeyboardButton("🗓 Historial", callback_data="history_pendings")]
         paginator = Paginator(lines, items_per_page=10, text_before="Mis pendientes directos:", add_back=True, other_buttons=other_buttons)
         # save paginator in user_data
         context.user_data["paginator"] = paginator
@@ -166,7 +166,7 @@ async def pending_history(update: Update, context: ContextTypes):
     if pendings:
         lines = [f"{i}. {token_sql.get_token(pending.token_id).name + ' de' if pending.token_id else ''} {token_type_sql.get_token_type(pending.token_type_id).type} - {user_sql.get_user(pending.student_id).fullname} Aprobado el {datetime.date(pending.approved_date.year, pending.approved_date.month, pending.approved_date.day)} con un valor de {student_token_sql.get_value(pending.student_id, pending.token_id)} -> /pending_{pending.id}" for i, pending in enumerate(pendings, start=1)]
         # create new paginator using this lines
-        other_buttons = [InlineKeyboardButton("Todos los pendientes", callback_data="all_pendings")]
+        other_buttons = [InlineKeyboardButton("🗃 Todos los pendientes", callback_data="all_pendings")]
         paginator = Paginator(lines, items_per_page=10, text_before="Historial de pendientes que has aprobado:", add_back=True, other_buttons=other_buttons)
         # save paginator in user_data
         context.user_data["paginator"] = paginator
@@ -256,7 +256,7 @@ async def filter_pendings(update: Update, context: ContextTypes):
             # create a list of lines for each pending
             lines = [f"{i}. {token_type_sql.get_token_type(pending.token_type_id).type} - {user_sql.get_user(pending.student_id).fullname} Fecha: {datetime.date(pending.creation_date.year, pending.creation_date.month, pending.creation_date.day)} -> /pending_{pending.id} {'(Esperando más información)' if pending.more_info == 'PENDING' else ''}{'(Nueva información recibida)' if pending.more_info == 'SENT' else ''}" for i, pending in enumerate(pendings, start=1)]
             # create new paginator using this lines
-            other_buttons = [InlineKeyboardButton("Todos los pendientes", callback_data="all_pendings"), InlineKeyboardButton("Filtrar", callback_data="filter_pendings"), InlineKeyboardButton("Historial", callback_data="history_pendings")]
+            other_buttons = [InlineKeyboardButton("🗃 Todos los pendientes", callback_data="all_pendings"), InlineKeyboardButton("🔽 Filtrar", callback_data="filter_pendings"), InlineKeyboardButton("🗓 Historial", callback_data="history_pendings")]
             paginator = Paginator(lines, items_per_page=10, text_before=f'Pendientes de "{t_type}":', add_back=True, other_buttons=other_buttons)
             # save paginator in user_data
             context.user_data["paginator"] = paginator
@@ -295,7 +295,7 @@ async def filters_pendings_activity(update: Update, context: ContextTypes):
     if pendings:
         # create a list of lines for each pending
         lines = [f"{i}. {token_sql.get_token(pending.token_id).name + ' de' if pending.token_id else ''} {token_type_sql.get_token_type(pending.token_type_id).type} - {user_sql.get_user(pending.student_id).fullname} Fecha: {datetime.date(pending.creation_date.year, pending.creation_date.month, pending.creation_date.day)} -> /pending_{pending.id} {'(Esperando más información)' if pending.more_info == 'PENDING' else ''}{'(Nueva información recibida)' if pending.more_info == 'SENT' else ''}" for i, pending in enumerate(pendings, start=1)]
-        other_buttons = [InlineKeyboardButton("Todos los pendientes", callback_data="all_pendings"), InlineKeyboardButton("Filtrar", callback_data="filter_pendings"), InlineKeyboardButton("Historial", callback_data="history_pendings")]
+        other_buttons = [InlineKeyboardButton("🗃 Todos los pendientes", callback_data="all_pendings"), InlineKeyboardButton("🔽 Filtrar", callback_data="filter_pendings"), InlineKeyboardButton("🗓 Historial", callback_data="history_pendings")]
         paginator = Paginator(lines, items_per_page=10, text_before=f'Pendientes de "{token_type_sql.get_token_type(token_type_id).type}":', add_back=True, other_buttons=other_buttons)
         # save paginator in user_data
         context.user_data["paginator"] = paginator
@@ -332,7 +332,7 @@ async def filters_pendings_practic_class(update: Update, context: ContextTypes):
     if pendings:
         # create a list of lines for each pending
         lines = [f"{i}. Ejercicio {token_sql.get_token(pending.token_id).name + ' de' if pending.token_id else ''} la clase práctica {token_type_sql.get_token_type(pending.token_type_id).type} - {user_sql.get_user(pending.student_id).fullname} Fecha: {datetime.date(pending.creation_date.year, pending.creation_date.month, pending.creation_date.day)} -> /pending_{pending.id} {'(Esperando más información)' if pending.more_info == 'PENDING' else ''}{'(Nueva información recibida)' if pending.more_info == 'SENT' else ''}" for i, pending in enumerate(pendings, start=1)]
-        other_buttons = [InlineKeyboardButton("Todos los pendientes", callback_data="all_pendings"), InlineKeyboardButton("Filtrar", callback_data="filter_pendings"), InlineKeyboardButton("Historial", callback_data="history_pendings")]
+        other_buttons = [InlineKeyboardButton("🗃 Todos los pendientes", callback_data="all_pendings"), InlineKeyboardButton("🔽 Filtrar", callback_data="filter_pendings"), InlineKeyboardButton("🗓 Historial", callback_data="history_pendings")]
         paginator = Paginator(lines, items_per_page=10, text_before=f'Pendientes de "{token_type_sql.get_token_type(token_type_id).type}":', add_back=True, other_buttons=other_buttons)
         # save paginator in user_data
         context.user_data["paginator"] = paginator
@@ -409,23 +409,23 @@ async def pending_info(update: Update, context: ContextTypes):
                     await update.message.reply_photo(
                         pending.FileID, 
                         caption=text,
-                        reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Historial", callback_data="history_pendings")],[InlineKeyboardButton("Atrás", callback_data="back")]]),
+                        reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🗓 Historial", callback_data="history_pendings")],[InlineKeyboardButton("🔙", callback_data="back")]]),
                     )
                 except BadRequest:
                     await update.message.reply_document(
                         pending.FileID,
                         caption=text,
-                        reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Historial", callback_data="history_pendings")],[InlineKeyboardButton("Atrás", callback_data="back")]]),
+                        reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🗓 Historial", callback_data="history_pendings")],[InlineKeyboardButton("🔙", callback_data="back")]]),
                     )
             except BadRequest:
                 await update.message.reply_text(
                     text=text + "\n\nSe ha producido un error al mostrar el archivo enviado con el pendiente. Es posible que haya sido eliminado.",
-                    reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Historial", callback_data="history_pendings")],[InlineKeyboardButton("Atrás", callback_data="back")]]),
+                    reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🗓 Historial", callback_data="history_pendings")],[InlineKeyboardButton("🔙", callback_data="back")]]),
                 )
         else:
             await update.message.reply_text(
                 text=text,
-                reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Historial", callback_data="history_pendings")],[InlineKeyboardButton("Atrás", callback_data="back")]]),
+                reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🗓 Historial", callback_data="history_pendings")],[InlineKeyboardButton("🔙", callback_data="back")]]),
             )
 
     else: 
@@ -532,12 +532,12 @@ async def manage_pending(update: Update, context: ContextTypes):
                         if query.message.caption:
                             await query.edit_message_caption(
                                 f"Ingrese la cantidad de créditos a otorgar por el ejercicio {token_sql.get_token(pending.token_id).name} de {pending_type} de {user_sql.get_user(pending.student_id).fullname}. Puede agregar un comentario después de la cantidad de créditos después de un espacio.\n\n",
-                                reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Atrás", callback_data="back")]]),
+                                reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔙", callback_data="back")]]),
                             )
                         else:
                             await query.edit_message_text(
                                 f"Ingrese la cantidad de créditos a otorgar por el ejercicio {token_sql.get_token(pending.token_id).name} de {pending_type} de {user_sql.get_user(pending.student_id).fullname}. Puede agregar un comentario después de la cantidad de créditos después de un espacio.\n\n",
-                                reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Atrás", callback_data="back")]]),
+                                reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔙", callback_data="back")]]),
                             )
                         return states.T_PENDING_APPROVE_PARTIAL_CREDITS
                     else:
@@ -575,7 +575,7 @@ async def manage_pending(update: Update, context: ContextTypes):
         else:
             await query.edit_message_caption(
                 f"Ingrese la cantidad de créditos a otorgar por el {pending_type} de {user_sql.get_user(pending.student_id).fullname}. Puede agregar un comentario después de la cantidad de créditos después de un espacio.",
-                reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Atrás", callback_data="back")]]),
+                reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔙", callback_data="back")]]),
             )
         return states.T_PENDING_APPROVE
     
@@ -584,12 +584,12 @@ async def manage_pending(update: Update, context: ContextTypes):
         if query.message.text:
             await query.edit_message_text(
                 text=f"Puede ingresar una razón para el rechazo de {pending_type} de {user_sql.get_user(pending.student_id).fullname} o presione continuar. Se le notificará al estudiante.",
-                reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Continuar", callback_data="pending_reject_continue")], [InlineKeyboardButton("Atrás", callback_data="back")]]),
+                reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Continuar", callback_data="pending_reject_continue")], [InlineKeyboardButton("🔙", callback_data="back")]]),
             )
         else:
             await query.edit_message_caption(
                 caption=f"Puede ingresar una razón para el rechazo de {pending_type} de {user_sql.get_user(pending.student_id).fullname} o presione continuar. Se le notificará al estudiante.",
-                reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Continuar", callback_data="pending_reject_continue")], [InlineKeyboardButton("Atrás", callback_data="back")]]),
+                reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Continuar", callback_data="pending_reject_continue")], [InlineKeyboardButton("🔙", callback_data="back")]]),
         )
         return states.T_PENDING_REJECT
 
@@ -630,12 +630,12 @@ async def manage_pending(update: Update, context: ContextTypes):
         if query.message.text:
             await query.edit_message_text(
                 text=f"Ingrese el mensaje que desea enviar al estudiante {user_sql.get_user(pending.student_id).fullname} para pedirle más información sobre el {pending_type}.",
-                reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Atrás", callback_data="back")]]),
+                reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔙", callback_data="back")]]),
             )
         else:
             await query.edit_message_caption(
                 caption=f"Ingrese el mensaje que desea enviar al estudiante {user_sql.get_user(pending.student_id).fullname} para pedirle más información sobre el {pending_type}.",
-                reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Atrás", callback_data="back")]]),
+                reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔙", callback_data="back")]]),
         )
         return states.T_PENDING_MORE_INFO
 
@@ -766,25 +766,27 @@ async def approve_pending(update: Update, context: ContextTypes):
 
     # notify student or guild
     if guild:
-        text = f"El profesor {teacher_name} ha aprobado el {token_type} del gremio {guild.name} con un valor de {value}.\n\nTu {token_type}:\n{pending.text}"
+        text = f"El profesor <b>{teacher_name}</b> ha aprobado el <b>{token_type}</b> del gremio <b>{guild.name}</b> con un valor de <b>{value}</b>.\n\nTu {token_type}:\n{pending.text}"
         if comment:
-            text += f"\n\nComentario:\n{comment}"
+            text += f"\n\n<b>Comentario:</b>\n{comment}"
         for student in student_sql.get_students_by_guild(guild.id):
             try:
                 await context.bot.send_message(
                     chat_id=user_sql.get_user(student.id).telegram_chatid,
                     text=text,
+                    parse_mode="HTML",
                 )
             except BadRequest:
                 logger.error(f"Error sending message to student {user_sql.get_user(student.id).fullname} (chat_id: {user_sql.get_user(student.id).telegram_chatid})")
     else:
-        text = f"El profesor {teacher_name} ha aprobado tu {token_type} con un valor de {value}.\n\nTu {token_type}:\n{pending.text}"
+        text = f"El profesor <b>{teacher_name}</b> ha aprobado tu <b>{token_type}</b> con un valor de <b>{value}</b>.\n\nTu {token_type}:\n{pending.text}"
         if comment:
-            text += f"\n\nComentario:\n{comment}"
+            text += f"\n\n<b>Comentario:</b>\n{comment}"
         try:
             await context.bot.send_message(
                 chat_id=student_chat_id,
                 text=text,
+                parse_mode="HTML",
             )
         except BadRequest:
             logger.error(f"Error sending message to student {student_name} (chat_id: {student_chat_id})")
@@ -816,8 +818,9 @@ async def approve_partial_credits(update: Update, context: ContextTypes):
 
     if int(partial_credits) < 0 or int(partial_credits) > exercise.value:
         await update.message.reply_text(
-            f"El valor debe estar entre 0 y el valor del ejercicio: {exercise.value}",
-            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Atrás", callback_data="back")]])
+            f"El valor debe estar entre 0 y el valor del ejercicio: <b>{exercise.value}</b>",
+            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔙", callback_data="back")]]),
+            parse_mode="HTML",
         )
         return states.T_PENDING_APPROVE_PARTIAL_CREDITS
     
@@ -832,13 +835,14 @@ async def approve_partial_credits(update: Update, context: ContextTypes):
     pending_sql.approve_pending(pending_id, user_sql.get_user_by_chatid(update.effective_user.id).id)
     logger.info(f"Pending {pending_id} approved")
     # notify student
-    text = f"{user_sql.get_user_by_chatid(update.effective_user.id).fullname} ha aprobado tu ejercicio {token.name} de {pending_type} con {value} créditos.\n\nTu {token.name}:\n{pending.text}"
+    text = f"<b>{user_sql.get_user_by_chatid(update.effective_user.id).fullname}</b> ha aprobado tu ejercicio <b>{token.name}</b> de <b>{pending_type}</b> con <b>{value}</b> créditos.\n\nTu {token.name}:\n{pending.text}"
     if comment:
-            text += f"\n\nComentario:\n{comment}"
+            text += f"\n\n<b>Comentario:</b>\n{comment}"
     try:
         await context.bot.send_message(
             chat_id=user_sql.get_user(pending.student_id).telegram_chatid,
             text=text,
+            parse_mode="HTML",
         )
     except BadRequest:
         logger.error(f"Error sending message to student {user_sql.get_user(pending.student_id).fullname} (chat_id: {user_sql.get_user(pending.student_id).telegram_chatid})")
@@ -865,12 +869,12 @@ async def more_info_pending(update: Update, context: ContextTypes):
     pending_sql.ask_for_more_info(pending_id, text)
     logger.info(f"Pending {pending_id} updated with more info from teacher")
     # notify student
-    text = f"El profesor {user_sql.get_user_by_chatid(update.effective_user.id).fullname} ha solicitado más información sobre tu {token_type}.\n\nTu {token_type}:\n{pending_sql.get_pending(pending_id).text}"
+    text = f"{user_sql.get_user_by_chatid(update.effective_user.id).fullname} ha solicitado más información sobre tu {token_type}.\n\nTu {token_type}:\n{pending_sql.get_pending(pending_id).text}"
     try:
         await context.bot.send_message(
             chat_id=student_chat_id,
             text=text,
-            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Responder", callback_data=f"pending_more_info_student#{pending_id}#{teacher_chat_id}")]]),
+            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("📤 Responder", callback_data=f"pending_more_info_student#{pending_id}#{teacher_chat_id}")]]),
         )
     except BadRequest:
         logger.error(f"Error sending message to student {student_name} (chat_id: {student_chat_id})")
@@ -888,15 +892,15 @@ async def teacher_pendings_back(update: Update, context: ContextTypes):
     teacher = teacher_sql.get_teacher(user_sql.get_user_by_chatid(update.effective_user.id).id)
     # get active classroom from db
     classroom = classroom_sql.get_classroom(teacher.active_classroom_id)
-    # get course name
-    course_name = course_sql.get_course(classroom.course_id).name
 
     await query.message.reply_text(
-        f"Bienvenido profe {user_sql.get_user_by_chatid(update.effective_user.id).fullname}!\n\n"
-        f"Curso: {course_name}\n"
-        f"Aula: {classroom.name}\n"
-        f"Menu en construcción...",
+        bot_text.main_menu(
+            fullname=user_sql.get_user_by_chatid(update.effective_user.id).fullname,
+            role="teacher",
+            classroom_name=classroom.name,
+        ),
         reply_markup=ReplyKeyboardMarkup(keyboards.TEACHER_MAIN_MENU, one_time_keyboard=True, resize_keyboard=True),
+        parse_mode="HTML",
     )
 
     if "paginator" in context.user_data:
@@ -908,7 +912,7 @@ async def teacher_pendings_back(update: Update, context: ContextTypes):
 
 # Handlers
 teacher_pendings_conv = ConversationHandler(
-    entry_points=[MessageHandler(filters.Regex("^Pendientes$"), teacher_pendings)],
+    entry_points=[MessageHandler(filters.Regex("^🗃 Pendientes$"), teacher_pendings)],
     states={
         states.T_PENDING_SELECT: [
             text_paginator_handler,
@@ -950,7 +954,7 @@ teacher_pendings_conv = ConversationHandler(
     },
     fallbacks=[
         CallbackQueryHandler(teacher_pendings_back, pattern=r"^back$"),
-        MessageHandler(filters.Regex("^Atrás$"), back_to_teacher_menu)
+        MessageHandler(filters.Regex("^🔙$"), back_to_teacher_menu)
         ],
     allow_reentry=True,
 )

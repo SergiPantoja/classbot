@@ -56,19 +56,20 @@ async def student_guild(update: Update, context: ContextTypes):
         # get students in guild
         students = student_sql.get_students_by_guild(student_guild.id)
         student_text = "\n".join([f"{i}. {user_sql.get_user(student.id).fullname}" for i, student in enumerate(students, start=1)])
-        text = f"Gremio: {guild.name}\n\nEstudiantes:\n{student_text}"
+        text = f"<b>Gremio:</b> {guild.name}\n\n<b>Estudiantes:</b>\n{student_text}"
         await update.message.reply_text(
             text,
             reply_markup=ReplyKeyboardMarkup(
-                [["Atrás"]], one_time_keyboard=True, resize_keyboard=True
-            )
+                [["🔙"]], one_time_keyboard=True, resize_keyboard=True
+            ),
+            parse_mode="HTML",
         )
     else:
         await update.message.reply_text(
             "No estás en ningún gremio",
             reply_markup=ReplyKeyboardMarkup(
-                [["Atrás"]], one_time_keyboard=True, resize_keyboard=True
+                [["🔙"]], one_time_keyboard=True, resize_keyboard=True
             )
         )
             
-student_guild_handler = MessageHandler(filters.Regex("^Gremio$"), student_guild)
+student_guild_handler = MessageHandler(filters.Regex("^🎓 Gremio$"), student_guild)

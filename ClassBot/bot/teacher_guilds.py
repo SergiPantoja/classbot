@@ -11,7 +11,7 @@ from telegram.ext import (
 )
 
 from utils.logger import logger
-from bot.utils import states, keyboards
+from bot.utils import states, keyboards, bot_text
 from bot.utils.inline_keyboard_pagination import paginated_keyboard, paginator_handler
 from bot.utils.pagination import Paginator, text_paginator_handler
 from bot.utils.clean_context import clean_teacher_context
@@ -49,7 +49,7 @@ async def teacher_guilds(update: Update, context: ContextTypes):
     if guilds:
         # Show guilds with pagination
         buttons = [InlineKeyboardButton(f"{i}. {guild.name}", callback_data=f"guild#{guild.id}") for i, guild in enumerate(guilds, start=1)]
-        other_buttons = [InlineKeyboardButton("Crear gremio", callback_data="create_guild")]
+        other_buttons = [InlineKeyboardButton("➕ Crear gremio", callback_data="create_guild")]
         await update.message.reply_text(
             "Gremios del aula:",
             reply_markup=paginated_keyboard(buttons, context=context, add_back=True, other_buttons=other_buttons),
@@ -70,7 +70,7 @@ async def teacher_guilds_create(update: Update, context: ContextTypes):
     await query.answer()
     await query.edit_message_text(
         "Ingrese el nombre del gremio:",
-        reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Atrás", callback_data="back")]]),
+        reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔙", callback_data="back")]]),
     )
     return states.T_GUILD_CREATE_NAME
 
@@ -87,7 +87,7 @@ async def teacher_guilds_create_name(update: Update, context: ContextTypes):
     guilds = guild_sql.get_guilds_by_classroom(classroom_id)
     # show guilds with pagination
     buttons = [InlineKeyboardButton(f"{i}. {guild.name}", callback_data=f"guild#{guild.id}") for i, guild in enumerate(guilds, start=1)]
-    other_buttons = [InlineKeyboardButton("Crear gremio", callback_data="create_guild")]
+    other_buttons = [InlineKeyboardButton("➕ Crear gremio", callback_data="create_guild")]
     await update.message.reply_text(
         "Gremios del aula:",
         reply_markup=paginated_keyboard(buttons, context=context, add_back=True, other_buttons=other_buttons),
@@ -120,10 +120,11 @@ async def select_guild(update: Update, context: ContextTypes):
         else:
             student_text = "No hay estudiantes en este gremio"
         
-        text = f"Gremio: {guild.name}\n\nEstudiantes:\n{student_text}"
+        text = f"<b>Gremio:</b> {guild.name}\n\n<b>Estudiantes:</b>\n{student_text}"
         await query.edit_message_text(
             text=text,
             reply_markup=InlineKeyboardMarkup(keyboards.TEACHER_GUILD_OPTIONS),
+            parse_mode="HTML",
         )
         return states.T_GUILD_OPTIONS
 
@@ -209,10 +210,6 @@ async def guild_options(update: Update, context: ContextTypes):
         )
         return states.T_GUILD_OPTIONS_EDIT_NAME
     
-    elif query.data == "guild_credit_details":
-        # show credit details
-        pass
-
 async def edit_guild_name(update: Update, context: ContextTypes):
     """ Edits the name of the guild """
     name = update.message.text
@@ -230,10 +227,11 @@ async def edit_guild_name(update: Update, context: ContextTypes):
     else:
         student_text = "No hay estudiantes en este gremio"
     
-    text = f"Gremio: {guild.name}\n\nEstudiantes:\n{student_text}"
+    text = f"<b>Gremio:</b> {guild.name}\n\n<b>Estudiantes:</b>\n{student_text}"
     await update.message.reply_text(
         text=text,
         reply_markup=InlineKeyboardMarkup(keyboards.TEACHER_GUILD_OPTIONS),
+        parse_mode="HTML",
     )
     return states.T_GUILD_OPTIONS
 
@@ -256,10 +254,11 @@ async def select_student_to_add(update: Update, context: ContextTypes):
     else:
         student_text = "No hay estudiantes en este gremio"
     
-    text = f"Gremio: {guild_sql.get_guild(guild_id).name}\n\nEstudiantes:\n{student_text}"
+    text = f"<b>Gremio:</b> {guild_sql.get_guild(guild_id).name}\n\n<b>Estudiantes:</b>\n{student_text}"
     await query.edit_message_text(
         text=text,
         reply_markup=InlineKeyboardMarkup(keyboards.TEACHER_GUILD_OPTIONS),
+        parse_mode="HTML",
     )
     return states.T_GUILD_OPTIONS
 
@@ -282,10 +281,11 @@ async def select_student_to_remove(update: Update, context: ContextTypes):
     else:
         student_text = "No hay estudiantes en este gremio"
     
-    text = f"Gremio: {guild_sql.get_guild(guild_id).name}\n\nEstudiantes:\n{student_text}"
+    text = f"<b>Gremio:</b> {guild_sql.get_guild(guild_id).name}\n\n<b>Estudiantes:</b>\n{student_text}"
     await query.edit_message_text(
         text=text,
         reply_markup=InlineKeyboardMarkup(keyboards.TEACHER_GUILD_OPTIONS),
+        parse_mode="HTML",
     )
     return states.T_GUILD_OPTIONS
 
@@ -297,15 +297,15 @@ async def teacher_guilds_back(update: Update, context: ContextTypes):
     teacher = teacher_sql.get_teacher(user_sql.get_user_by_chatid(update.effective_user.id).id)
     # get active classroom from db
     classroom = classroom_sql.get_classroom(teacher.active_classroom_id)
-    # get course name
-    course_name = course_sql.get_course(classroom.course_id).name
 
     await query.message.reply_text(
-        f"Bienvenido profe {user_sql.get_user_by_chatid(update.effective_user.id).fullname}!\n\n"
-        f"Curso: {course_name}\n"
-        f"Aula: {classroom.name}\n"
-        f"Menu en construcción...",
+        bot_text.main_menu(
+            fullname=user_sql.get_user(teacher.id).fullname,
+            role="teacher",
+            classroom_name=classroom.name,
+        ),
         reply_markup=ReplyKeyboardMarkup(keyboards.TEACHER_MAIN_MENU, one_time_keyboard=True, resize_keyboard=True),
+        parse_mode="HTML",
     )
 
     if "guild" in context.user_data:
@@ -315,7 +315,7 @@ async def teacher_guilds_back(update: Update, context: ContextTypes):
 
 # Handlers
 teacher_guilds_conv = ConversationHandler(
-    entry_points=[MessageHandler(filters.Regex("^Gremios$"), teacher_guilds)],
+    entry_points=[MessageHandler(filters.Regex("^🎓 Gremios$"), teacher_guilds)],
     states={
         states.T_GUILD_CREATE: [CallbackQueryHandler(teacher_guilds_create, pattern=r"^create_guild$")],
         states.T_GUILD_SELECT: [
@@ -336,7 +336,7 @@ teacher_guilds_conv = ConversationHandler(
     },
     fallbacks=[
         CallbackQueryHandler(teacher_guilds_back, pattern=r"^back$"),
-        MessageHandler(filters.Regex("^Atrás$"), back_to_teacher_menu)
+        MessageHandler(filters.Regex("^🔙$"), back_to_teacher_menu)
         ],
     allow_reentry=True,
 )

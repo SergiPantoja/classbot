@@ -12,7 +12,7 @@ from telegram.ext import (
 )
 
 from utils.logger import logger
-from bot.utils import states, keyboards
+from bot.utils import states, keyboards, bot_text
 from bot.utils.inline_keyboard_pagination import paginated_keyboard, paginator_handler
 from bot.utils.pagination import Paginator, text_paginator_handler
 from bot.utils.clean_context import clean_teacher_context
@@ -59,8 +59,9 @@ async def send_message(update: Update, context: ContextTypes):
     classroom = classroom_sql.get_classroom(teacher.active_classroom_id)
 
     await query.edit_message_text(
-        f"Envía una notificación a todos los estudiantes de {classroom.name}.\n\nPuedes enviar un archivo o una foto, o simplemente un mensaje de texto.",
-        reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Atrás", callback_data="back")]]),
+        f"Envía una notificación a todos los estudiantes de <b>{classroom.name}</b>.\n\nPuedes enviar un archivo o una foto, o simplemente un mensaje de texto.",
+        reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔙", callback_data="back")]]),
+        parse_mode="HTML",
     )
     return states.T_CLASSROOM_SEND_MESSAGE
 
@@ -141,7 +142,7 @@ async def classroom_students(update: Update, context: ContextTypes):
     paginator = Paginator(
         lines=lines, 
         items_per_page=10, 
-        text_before=f"Estudiantes de {classroom.name} ordenados por créditos:", 
+        text_before=f"Estudiantes de <b>{classroom.name}</b> ordenados por créditos:", 
         text_after="Selecciona un estudiante para ver su historial de créditos",
         add_back=True,
         )
@@ -177,7 +178,7 @@ async def classroom_guilds(update: Update, context: ContextTypes):
     paginator = Paginator(
         lines=lines, 
         items_per_page=10, 
-        text_before=f"Gremios de {classroom.name} ordenados por créditos:", 
+        text_before=f"Gremios de <b>{classroom.name}</b> ordenados por créditos:", 
         text_after="Selecciona un gremio para ver su historial de créditos",
         add_back=True,
         )
@@ -209,7 +210,7 @@ async def guild_info(update: Update, context: ContextTypes):
     # sort students by total credits
     students.sort(key=lambda student: student_token_sql.get_total_value_by_classroom(student.id, classroom_id), reverse=True)
     # create first lines using students
-    lines = [f"Estudiantes de {guild.name} ordenados por créditos:"]
+    lines = [f"Estudiantes de <b>{guild.name}</b> ordenados por créditos:"]
     student_lines = [f"{i}. {str(student_token_sql.get_total_value_by_classroom(student.id, classroom_id)).ljust(10)} ➡️ {user_sql.get_user(student.id).fullname} /student_{student.id}" for i, student in enumerate(students, start=1)]
     lines.extend(student_lines)
     lines.append("")
@@ -236,7 +237,7 @@ async def guild_info(update: Update, context: ContextTypes):
     paginator = Paginator(
         lines=lines, 
         items_per_page=10, 
-        text_before=f"Historial de créditos de {guild.name}:", 
+        text_before=f"Historial de créditos de <b>{guild.name}:</b>", 
         text_after="",
         add_back=True,
         )
@@ -284,7 +285,7 @@ async def student_info(update: Update, context: ContextTypes):
     paginator = Paginator(
         lines=lines, 
         items_per_page=10, 
-        text_before=f"Historial de créditos de {user_sql.get_user(student.id).fullname}:", 
+        text_before=f"Historial de créditos de <b>{user_sql.get_user(student.id).fullname}:</b>", 
         text_after="",
         add_back=True,
         )
@@ -310,11 +311,13 @@ async def teacher_classroom_back(update: Update, context: ContextTypes):
     course_name = course_sql.get_course(classroom.course_id).name
 
     await query.message.reply_text(
-        f"Bienvenido profe {user_sql.get_user_by_chatid(update.effective_user.id).fullname}!\n\n"
-        f"Curso: {course_name}\n"
-        f"Aula: {classroom.name}\n"
-        f"Menu en construcción...",
+        bot_text.main_menu(
+            fullname=user_sql.get_user(teacher.id).fullname,
+            role="teacher",
+            classroom_name=classroom.name,
+        ),
         reply_markup=ReplyKeyboardMarkup(keyboards.TEACHER_MAIN_MENU, one_time_keyboard=True, resize_keyboard=True),
+        parse_mode="HTML",
     )
 
     if "classroom" in context.user_data:
@@ -345,7 +348,7 @@ teacher_classroom_conv = ConversationHandler(
     },
     fallbacks=[
         CallbackQueryHandler(teacher_classroom_back, pattern="back"),
-        MessageHandler(filters.Regex("^Atrás$"), back_to_teacher_menu),
+        MessageHandler(filters.Regex("^🔙$"), back_to_teacher_menu),
     ],
     allow_reentry=True,
 )

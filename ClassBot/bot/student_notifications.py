@@ -11,7 +11,7 @@ from telegram.ext import (
 )
 
 from utils.logger import logger
-from bot.utils import states, keyboards
+from bot.utils import states, keyboards, bot_text
 from bot.utils.inline_keyboard_pagination import paginated_keyboard, paginator_handler
 from bot.utils.pagination import Paginator, text_paginator_handler
 from bot.utils.clean_context import clean_student_context
@@ -44,7 +44,7 @@ async def student_answer_pending(update: Update, context: ContextTypes):
     # ask the student to send the answer or go back
     await query.edit_message_text(
         text=query.message.text + "\n\n" + "Envíe su respuesta o un archivo con más información.",
-        reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Atrás", callback_data="back")]])
+        reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔙", callback_data="back")]]) # back?
     )
     return states.S_SEND_ANSWER
 
@@ -91,12 +91,13 @@ async def student_answer_pending_back(update: Update, context: ContextTypes):
     
     student = student_sql.get_student(user_sql.get_user_by_chatid(update.effective_chat.id).id)
     classroom = classroom_sql.get_classroom(student.active_classroom_id)
-    course_name = course_sql.get_course(classroom.course_id).name
 
     await query.message.edit_text(
-        f"Menú principal de {user_sql.get_user_by_chatid(update.effective_chat.id).__name__}:\n\n"
-        f"Curso: {course_name}\n"
-        f"Aula: {classroom.name}",
+        bot_text.main_menu(
+            fullname=user_sql.get_user(student.id).fullname,
+            role="student",
+            classroom_name=classroom.name,
+        ),
         reply_markup=ReplyKeyboardMarkup(keyboards.STUDENT_MAIN_MENU, resize_keyboard=True, one_time_keyboard=True)
     )
 
@@ -114,7 +115,7 @@ student_answer_pending_conv = ConversationHandler(
     },
     fallbacks=[
         CallbackQueryHandler(student_answer_pending_back, pattern=r"^back$"),
-        MessageHandler(filters.Regex("^Atrás$"), back_to_student_menu)
+        MessageHandler(filters.Regex("^🔙$"), back_to_student_menu)
     ],
     # is a callbackqueryhandler it would be impossible to reenter at certain point if the user lost the message
 )

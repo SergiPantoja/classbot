@@ -11,7 +11,7 @@ from telegram.ext import (
 )
 
 from utils.logger import logger
-from bot.utils import states, keyboards
+from bot.utils import states, keyboards, bot_text
 from bot.utils.inline_keyboard_pagination import paginated_keyboard, paginator_handler
 from bot.utils.pagination import Paginator, text_paginator_handler
 from bot.utils.clean_context import clean_student_context
@@ -57,8 +57,8 @@ async def select_action(update: Update, context: ContextTypes):
             "Seleccione la clase en la que desea intervenir",
             reply_markup=InlineKeyboardMarkup(
                 [
-                    [InlineKeyboardButton("Conferencias", callback_data="select_intervention:conference"), InlineKeyboardButton("Clases Prácticas", callback_data="select_intervention:practic_class")],
-                    [InlineKeyboardButton("Atrás", callback_data="back")],
+                    [InlineKeyboardButton("👨‍🏫 Conferencias", callback_data="select_intervention:conference"), InlineKeyboardButton("📓 Clases Prácticas", callback_data="select_intervention:practic_class")],
+                    [InlineKeyboardButton("🔙", callback_data="back")],
                 ]
             )
         )
@@ -84,7 +84,7 @@ async def select_action(update: Update, context: ContextTypes):
     if action == "action_status_phrase":
         await query.edit_message_text(
             "Envíe un mensaje con su nueva frase de estado",
-            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Atrás", callback_data="back")]]),
+            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔙", callback_data="back")]]),
         )
         return states.S_ACTIONS_SEND_STATUS_PHRASE
     if action == "action_diary_update":
@@ -108,32 +108,32 @@ async def select_action(update: Update, context: ContextTypes):
             else:
                 await query.edit_message_text(
                     "Envíe un mensaje con su actualización de diario",
-                    reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Atrás", callback_data="back")]]),
+                    reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔙", callback_data="back")]]),
                 )
                 return states.S_ACTIONS_SEND_DIARY_UPDATE
         else:
             # no diary update yet then proceed
             await query.edit_message_text(
                 "Envíe un mensaje con su actualización de diario",
-                reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Atrás", callback_data="back")]]),
+                reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔙", callback_data="back")]]),
             )
             return states.S_ACTIONS_SEND_DIARY_UPDATE   
     if action == "action_meme":
         await query.edit_message_text(
             "Envíe una imagen con su meme.",
-            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Atrás", callback_data="back")]]),
+            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔙", callback_data="back")]]),
         )
         return states.S_ACTIONS_SEND_MEME
     if action == "action_joke":
         await query.edit_message_text(
             "Envíe un mensaje con su chiste.",
-            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Atrás", callback_data="back")]]),
+            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔙", callback_data="back")]]),
         )
         return states.S_ACTIONS_SEND_JOKE
     if action == "action_misc":
         await query.edit_message_text(
             "Envíe un mensaje con la miscelánea que desea proponer",
-            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Atrás", callback_data="back")]]),
+            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔙", callback_data="back")]]),
         )
         return states.S_ACTIONS_SEND_MISC
     
@@ -215,7 +215,7 @@ async def select_intervention(update: Update, context: ContextTypes):
             }
         await query.edit_message_text(
             "Envíe un mensaje con los detalles de su intervención",
-            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Atrás", callback_data="back")]]),
+            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔙", callback_data="back")]]),
         )
         return states.S_ACTIONS_SEND_INTERVENTION
 
@@ -226,7 +226,7 @@ async def select_intervention(update: Update, context: ContextTypes):
             }
         await query.edit_message_text(
             "Envíe un mensaje con los detalles de su intervención",
-            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Atrás", callback_data="back")]]),
+            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔙", callback_data="back")]]),
         )
         return states.S_ACTIONS_SEND_INTERVENTION
 async def send_intervention(update: Update, context: ContextTypes):
@@ -269,7 +269,7 @@ async def send_rectification(update: Update, context: ContextTypes):
             }
         await query.edit_message_text(
             f"Escriba su rectificación al profesor {user_sql.get_user(teacher_id).fullname}",
-            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Atrás", callback_data="back")]]),
+            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔙", callback_data="back")]]),
         )
         return states.S_ACTIONS_SEND_RECTIFICATION
     else:
@@ -410,13 +410,15 @@ async def student_actions_back(update: Update, context: ContextTypes):
 
     student = student_sql.get_student(user_sql.get_user_by_chatid(update.effective_user.id).id)
     classroom = classroom_sql.get_classroom(student.active_classroom_id)
-    course_name = course_sql.get_course(classroom.course_id).name
 
     await query.message.reply_text(
-        f"Menú principal"
-        f"Curso: {course_name}\n"
-        f"Aula: {classroom.name}\n",
+        bot_text.main_menu(
+            fullname=user_sql.get_user(student.id).fullname,
+            role="student",
+            classroom_name=classroom.name,
+        ),
         reply_markup=ReplyKeyboardMarkup(keyboards.STUDENT_MAIN_MENU, one_time_keyboard=True, resize_keyboard=True),
+        parse_mode="HTML",
     )
 
     if "actions" in context.user_data:
@@ -426,7 +428,7 @@ async def student_actions_back(update: Update, context: ContextTypes):
 
 # Handlers   
 student_actions_conv = ConversationHandler(
-    entry_points=[MessageHandler(filters.Regex("^Acciones$"), student_actions)],
+    entry_points=[MessageHandler(filters.Regex("^📤 Acciones$"), student_actions)],
     states={
         states.S_ACTIONS_SELECT_ACTION: [CallbackQueryHandler(select_action, pattern=r"^action_")],
         states.S_ACTIONS_SEND_MISC: [MessageHandler((filters.TEXT | filters.PHOTO | filters.Document.ALL) & ~filters.COMMAND, send_misc)],
@@ -447,7 +449,7 @@ student_actions_conv = ConversationHandler(
     },
     fallbacks=[
         CallbackQueryHandler(student_actions_back, pattern=r"^back$"),
-        MessageHandler(filters.Regex("^Atrás$"), back_to_student_menu)
+        MessageHandler(filters.Regex("^🔙$"), back_to_student_menu)
     ],
     allow_reentry=True,
 )

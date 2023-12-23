@@ -11,7 +11,7 @@ from telegram.ext import (
 )
 
 from utils.logger import logger
-from bot.utils import states, keyboards
+from bot.utils import states, keyboards, bot_text
 from bot.utils.inline_keyboard_pagination import paginated_keyboard, paginator_handler
 from bot.utils.clean_context import clean_student_context
 from sql import user_sql, classroom_sql, course_sql, student_sql, conference_sql, pending_sql, token_type_sql
@@ -65,7 +65,7 @@ async def student_select_conference(update: Update, context: ContextTypes):
     if query.data == "new_title_proposal":
         await query.edit_message_text(
             "Ingrese el nuevo título:",
-            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Atrás", callback_data="back")]])
+            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔙", callback_data="back")]])
         )
         return states.S_NEW_TITLE_PROPOSAL
     
@@ -123,13 +123,14 @@ async def student_conference_back(update: Update, context: ContextTypes):
 
     student = student_sql.get_student(user_sql.get_user_by_chatid(update.effective_user.id).id)
     classroom = classroom_sql.get_classroom(student.active_classroom_id)
-    course_name = course_sql.get_course(classroom.course_id).name
-
     await query.message.reply_text(
-        f"Menú principal.\n"
-        f"Curso: {course_name}.\n" 
-        f"Aula: {classroom.name}.\n",
+        bot_text.main_menu(
+            fullname=user_sql.get_user(student.id).fullname,
+            role="student",
+            classroom_name=classroom.name,
+        ),
         reply_markup=ReplyKeyboardMarkup(keyboards.STUDENT_MAIN_MENU, one_time_keyboard=True, resize_keyboard=True),
+        parse_mode="HTML",
     )
     # sanitize context
     if "conference" in context.user_data:
@@ -139,7 +140,7 @@ async def student_conference_back(update: Update, context: ContextTypes):
 
 # Handlers
 student_conferences_conv = ConversationHandler(
-    entry_points=[MessageHandler(filters.Regex("^🧑‍🎓 Conferencias$"), student_conferences)],
+    entry_points=[MessageHandler(filters.Regex("^👨‍🏫 Conferencias$"), student_conferences)],
     states={
         states.S_SELECT_CONFERENCE: [
             CallbackQueryHandler(student_select_conference, pattern="^(conference#|new_title_proposal)"),
@@ -149,7 +150,7 @@ student_conferences_conv = ConversationHandler(
     },
     fallbacks=[
         CallbackQueryHandler(student_conference_back, pattern="^back$"),
-        MessageHandler(filters.Regex("^Atrás$"), back_to_student_menu)
+        MessageHandler(filters.Regex("^🔙$"), back_to_student_menu)
     ],
     allow_reentry=True,
 )

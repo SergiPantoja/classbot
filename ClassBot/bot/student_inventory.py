@@ -8,7 +8,7 @@ from telegram.ext import (
 )
 
 from utils.logger import logger
-from bot.utils import states, keyboards
+from bot.utils import states, keyboards, bot_text
 from bot.utils.inline_keyboard_pagination import paginated_keyboard, paginator_handler
 from bot.utils.clean_context import clean_student_context
 from sql import user_sql, student_sql, student_token_sql, token_sql, classroom_sql, course_sql
@@ -55,13 +55,17 @@ async def back_to_student_menu(update: Update, context: ContextTypes):
     
     student = student_sql.get_student(user_sql.get_user_by_chatid(update.effective_chat.id).id)
     classroom_name = classroom_sql.get_classroom(student.active_classroom_id).name
-    course_name = course_sql.get_course(classroom_sql.get_classroom(student.active_classroom_id).course_id).name
 
     await update.message.reply_text(
-        f"Curso: {course_name}\nAula: {classroom_name}",
+        bot_text.main_menu(
+            fullname=user_sql.get_user(student.id).fullname,
+            role="student",
+            classroom_name=classroom_name,
+        ),
         reply_markup=ReplyKeyboardMarkup(
             keyboards.STUDENT_MAIN_MENU, one_time_keyboard=True, resize_keyboard=True
         ),
+        parse_mode="HTML",
     )
     
     #sanitize context
@@ -171,7 +175,7 @@ async def select_medal_back(update: Update, context: ContextTypes):
 
 
 # Handlers
-student_inventory_handler = MessageHandler(filters.Regex("Inventario"), student_inventory)
+student_inventory_handler = MessageHandler(filters.Regex("📦 Inventario"), student_inventory)
 
 inv_medal_conv = ConversationHandler(
     entry_points=[MessageHandler(filters.Regex("^Medallas$"), show_medal_list)],
@@ -182,7 +186,7 @@ inv_medal_conv = ConversationHandler(
             ],
     },
     fallbacks=[
-        MessageHandler(filters.Regex("^Atrás$"), back_to_student_menu),
+        MessageHandler(filters.Regex("^🔙$"), back_to_student_menu),
         CallbackQueryHandler(select_medal_back, pattern="^back$"),
     ],
     allow_reentry=True,

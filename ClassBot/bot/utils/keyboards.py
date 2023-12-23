@@ -7,18 +7,23 @@ SELECT_ROLE = [["🧑‍🎓 Estudiante", "🧑‍🏫 Profesor"]]
 TEACHER_LOGIN = [["Ingresar al aula", "Crear"]]
 TEACHER_CREATE = [["Crear curso", "Crear aula"]]
 
-TEACHER_MAIN_MENU = [["🧑‍🏫 Conferencias", "Opciones"], ["Pendientes", "Gremios"], ["Actividades 📖", "📔 Clases Prácticas"], ["🏫 Aula", "Atrás"]]
-TEACHER_SETTINGS = [["Editar curso", "Editar aula"], ["Atrás", "Salir"]]
+TEACHER_MAIN_MENU = [
+    ["🧑‍🏫 Conferencias", "📔 Clases Prácticas"],
+    ["📖 Actividades", "🗃 Pendientes"],
+    ["🎓 Gremios", "🏫 Aula"],
+    ["⚙️ Opciones", "🔙"],
+]
+TEACHER_SETTINGS = [["Editar curso", "Editar aula"], ["🚪 Salir", "🔙"]]
 TEACHER_EDIT_COURSE = [
     [
         InlineKeyboardButton("Cambiar nombre", callback_data="option_edit_course_name"),
         InlineKeyboardButton("Transferir", callback_data="option_transfer_course"),
     ],
     [
-        InlineKeyboardButton("Eliminar", callback_data="option_delete_course"),
+        InlineKeyboardButton("➖ Eliminar", callback_data="option_delete_course"),
         InlineKeyboardButton("Otros cursos", callback_data="option_other_courses"),
     ],
-    [InlineKeyboardButton("Atrás", callback_data="option_edit_course_back")], 
+    [InlineKeyboardButton("🔙", callback_data="option_edit_course_back")], 
 ]
 TEACHER_EDIT_CLASSROOM = [
     [
@@ -27,9 +32,9 @@ TEACHER_EDIT_CLASSROOM = [
     ],
     [
         InlineKeyboardButton("Cambiar de aula", callback_data="option_change_classroom"),
-        InlineKeyboardButton("Eliminar estudiantes", callback_data="option_remove_students"),
+        InlineKeyboardButton("➖ Eliminar estudiantes", callback_data="option_remove_students"),
     ],
-    [InlineKeyboardButton("Atrás", callback_data="option_edit_classroom_back")],
+    [InlineKeyboardButton("🔙", callback_data="option_edit_classroom_back")],
 ]
 TEACHER_EDIT_CLASSROOM_OWNER = [
     [
@@ -38,18 +43,18 @@ TEACHER_EDIT_CLASSROOM_OWNER = [
     ],
     [
         InlineKeyboardButton("Cambiar de aula", callback_data="option_change_classroom"),
-        InlineKeyboardButton("Eliminar estudiantes", callback_data="option_remove_students"),
+        InlineKeyboardButton("➖ Eliminar estudiantes", callback_data="option_remove_students"),
     ],
     [
-        InlineKeyboardButton("Eliminar profesores", callback_data="option_remove_teachers"),
-        InlineKeyboardButton("Eliminar aula", callback_data="option_delete_classroom"),
+        InlineKeyboardButton("➖ Eliminar profesores", callback_data="option_remove_teachers"),
+        InlineKeyboardButton("➖ Eliminar aula", callback_data="option_delete_classroom"),
     ],
-    [InlineKeyboardButton("Atrás", callback_data="option_edit_classroom_back")],
+    [InlineKeyboardButton("🔙", callback_data="option_edit_classroom_back")],
 ]
 TEACHER_CONFERENCE_CREATE = [
     [
-        InlineKeyboardButton("Crear conferencia", callback_data="conference_create"),
-        InlineKeyboardButton("Atrás", callback_data="conference_back"),
+        InlineKeyboardButton("➕ Crear conferencia", callback_data="conference_create"),
+        InlineKeyboardButton("🔙", callback_data="conference_back"),
     ],
 ]
 TEACHER_CONFERENCE_EDIT = [
@@ -59,20 +64,20 @@ TEACHER_CONFERENCE_EDIT = [
     ],
     [
         InlineKeyboardButton("Cambiar archivo", callback_data="conference_edit_file"),
-        InlineKeyboardButton("Eliminar", callback_data="conference_edit_delete"),
+        InlineKeyboardButton("➖ Eliminar", callback_data="conference_edit_delete"),
     ],
-    [InlineKeyboardButton("Atrás", callback_data="conference_back")],
+    [InlineKeyboardButton("🔙", callback_data="conference_back")],
 ]
 TEACHER_PENDING_OPTIONS = [
     [
-        InlineKeyboardButton("Aprobar", callback_data="pending_approve"),
-        InlineKeyboardButton("Denegar", callback_data="pending_reject"),
+        InlineKeyboardButton("🟢 Aprobar", callback_data="pending_approve"),
+        InlineKeyboardButton("🔴 Denegar", callback_data="pending_reject"),
     ],
     [
-        InlineKeyboardButton("Asignar a otro profesor", callback_data="pending_assign"),
-        InlineKeyboardButton("Pedir más información", callback_data="pending_ask_info"),
+        InlineKeyboardButton("🧑‍🏫 Asignar a otro profesor", callback_data="pending_assign"),
+        InlineKeyboardButton("💬 Pedir más información", callback_data="pending_ask_info"),
     ],
-    [InlineKeyboardButton("Atrás", callback_data="back")],
+    [InlineKeyboardButton("🔙", callback_data="back")],
 ]
 TEACHER_FILTER_PENDING = [
     [
@@ -96,27 +101,26 @@ TEACHER_FILTER_PENDING = [
         InlineKeyboardButton("Otras actividades", callback_data="filter_other_activities"),
     ],
     [
-        InlineKeyboardButton("Atrás", callback_data="back"),
+        InlineKeyboardButton("🔙", callback_data="back"),
     ]
 ]
 TEACHER_GUILD = [
     [
-        InlineKeyboardButton("Crear gremio", callback_data="create_guild"),
-        InlineKeyboardButton("Atrás", callback_data="back"),
+        InlineKeyboardButton("➕ Crear gremio", callback_data="create_guild"),
+        InlineKeyboardButton("🔙 Atrás", callback_data="back"),
     ],
 ]
 TEACHER_GUILD_OPTIONS = [
     [
-        InlineKeyboardButton("Añadir estudiante", callback_data="guild_add_student"),
-        InlineKeyboardButton("Eliminar estudiante", callback_data="guild_remove_student"),
+        InlineKeyboardButton("➕ Añadir estudiante", callback_data="guild_add_student"),
+        InlineKeyboardButton("➖ Eliminar estudiante", callback_data="guild_remove_student"),
     ],
     [
         InlineKeyboardButton("Cambiar nombre", callback_data="guild_change_name"),
-        InlineKeyboardButton("Eliminar gremio", callback_data="guild_delete"),
+        InlineKeyboardButton("➖ Eliminar gremio", callback_data="guild_delete"),
     ],
     [
-        InlineKeyboardButton("Detalles de los créditos", callback_data="guild_credits_details"),
-        InlineKeyboardButton("Atrás", callback_data="back")
+        InlineKeyboardButton("🔙 Atrás", callback_data="back"),
     ],
 ]
 TEACHER_ACTIVITY_TYPE_OPTIONS = [
@@ -129,12 +133,12 @@ TEACHER_ACTIVITY_TYPE_OPTIONS = [
         InlineKeyboardButton("Participantes", callback_data="activity_type_participants"),
     ],
     [
-        InlineKeyboardButton("Atrás", callback_data="back")
+        InlineKeyboardButton("🔙", callback_data="back")
     ]
 ]
 TEACHER_ACTIVITY_OPTIONS =[
     [
-        InlineKeyboardButton("Revisar actividad", callback_data="activity_review"),
+        InlineKeyboardButton("🖊 Revisar actividad", callback_data="activity_review"),
     ],
     [
         InlineKeyboardButton("Cambiar nombre", callback_data="activity_change_name"),
@@ -146,7 +150,7 @@ TEACHER_ACTIVITY_OPTIONS =[
     ],
     [
         InlineKeyboardButton("Participantes", callback_data="activity_participants"),
-        InlineKeyboardButton("Atrás", callback_data="back"),
+        InlineKeyboardButton("🔙", callback_data="back"),
     ],
 ]
 TEACHER_PRACTIC_CLASS_OPTIONS = [
@@ -156,40 +160,46 @@ TEACHER_PRACTIC_CLASS_OPTIONS = [
     ],
     [
         InlineKeyboardButton("Enviar otro archivo", callback_data="practic_class_change_file"),
-        InlineKeyboardButton("Eliminar clase práctica", callback_data="practic_class_delete"),
+        InlineKeyboardButton("➖ Eliminar clase práctica", callback_data="practic_class_delete"),
     ],
     [
         InlineKeyboardButton("Participantes", callback_data="practic_class_participants"),
-        InlineKeyboardButton("Atrás", callback_data="back"),
+        InlineKeyboardButton("🔙", callback_data="back"),
     ],
 ]
 TEACHER_PRACTIC_CLASS_EXERCISE_OPTIONS = [
     [
-        InlineKeyboardButton("Revisar ejercicio", callback_data="practic_class_exercise_review"),
-        InlineKeyboardButton("Eliminar ejercicio", callback_data="practic_class_exercise_delete"),
+        InlineKeyboardButton("🖊 Revisar ejercicio", callback_data="practic_class_exercise_review"),
+        InlineKeyboardButton("➖ Eliminar ejercicio", callback_data="practic_class_exercise_delete"),
     ],
     [
         InlineKeyboardButton("Participantes", callback_data="practic_class_exercise_participants"),
-        InlineKeyboardButton("Atrás", callback_data="back"),
+        InlineKeyboardButton("🔙 Atrás", callback_data="back"),
     ],
 ]
 TEACHER_CLASSROOM = [
     [
-        InlineKeyboardButton("Enviar mensaje", callback_data="classroom_send_message"),
+        InlineKeyboardButton("✉️ Enviar mensaje", callback_data="classroom_send_message"),
     ],
     [
-        InlineKeyboardButton("Estudiantes", callback_data="classroom_students"),
-        InlineKeyboardButton("Gremios", callback_data="classroom_guilds"),
+        InlineKeyboardButton("🧑‍🎓 Estudiantes", callback_data="classroom_students"),
+        InlineKeyboardButton("🎓 Gremios", callback_data="classroom_guilds"),
     ],
-    [InlineKeyboardButton("Atrás", callback_data="back")], 
+    [InlineKeyboardButton("🔙", callback_data="back")], 
 ]
 
-STUDENT_MAIN_MENU = [["🧑‍🎓 Conferencias", "Inventario"], ["Acciones", "Gremio"], ["Actividades 📝", "📓 Clases Prácticas"], ["Atrás"]]
-STUDENT_INVENTORY = [["Medallas", "Atrás"]]
+STUDENT_MAIN_MENU = [
+    ["👨‍🏫 Conferencias", "📓 Clases Prácticas"],
+    ["📝 Actividades", "📤 Acciones"],
+    ["🎓 Gremio", "📦 Inventario"],
+    ["🔙"],
+]
+STUDENT_MAIN_MENU_ = [["🧑‍🎓 Conferencias", "Inventario"], ["Acciones", "Gremio"], ["Actividades 📝", "📓 Clases Prácticas"], ["🔙"]]
+STUDENT_INVENTORY = [["🔙"]]
 STUDENT_CONFERENCE_SELECTED = [
     [
-        InlineKeyboardButton("Proponer nuevo título", callback_data="new_title_proposal"),
-        InlineKeyboardButton("Atrás", callback_data="back"),
+        InlineKeyboardButton("📤 Proponer nuevo título", callback_data="new_title_proposal"),
+        InlineKeyboardButton("🔙", callback_data="back"),
     ],
 ]
 STUDENT_ACTIONS = [
@@ -207,7 +217,6 @@ STUDENT_ACTIONS = [
     ],
     [
         InlineKeyboardButton("Miscelánea", callback_data="action_misc"),
-        InlineKeyboardButton("Atrás", callback_data="back"),
+        InlineKeyboardButton("🔙", callback_data="back"),
     ]
 ]
-

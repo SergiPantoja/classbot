@@ -12,7 +12,7 @@ from telegram.ext import (
 )
 
 from utils.logger import logger
-from bot.utils import states, keyboards
+from bot.utils import states, keyboards, bot_text
 from bot.utils.inline_keyboard_pagination import paginated_keyboard, paginator_handler
 from bot.utils.pagination import Paginator, text_paginator_handler
 from bot.utils.clean_context import clean_teacher_context
@@ -52,7 +52,7 @@ async def teacher_practic_classes(update: Update, context: ContextTypes):
     if practic_classes:
         # Show practic classes with pagination
         buttons = [InlineKeyboardButton(f"{i}. {token_type_sql.get_token_type(activity_type_sql.get_activity_type(practic_class.activity_type_id).token_type_id).type}", callback_data=f"practic_class#{practic_class.id}") for i, practic_class in enumerate(practic_classes, start=1)]
-        other_buttons = [InlineKeyboardButton("Crear clase práctica", callback_data="create_practic_class")]
+        other_buttons = [InlineKeyboardButton("➕ Crear clase práctica", callback_data="create_practic_class")]
         await update.message.reply_text(
             "Clases prácticas:",
             reply_markup=paginated_keyboard(buttons, context=context, add_back=True, other_buttons=other_buttons),
@@ -62,8 +62,8 @@ async def teacher_practic_classes(update: Update, context: ContextTypes):
         await update.message.reply_text(
             "No hay clases prácticas disponibles, desea crear una?",
             reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("Crear clase práctica", callback_data="create_practic_class")],
-                [InlineKeyboardButton("Atrás", callback_data="back")],
+                [InlineKeyboardButton("➕ Crear clase práctica", callback_data="create_practic_class")],
+                [InlineKeyboardButton("🔙", callback_data="back")],
             ])
         )
         return states.T_CP_CREATE
@@ -83,7 +83,7 @@ async def create_practic_class(update: Update, context: ContextTypes):
         "Ejemplo:\n"
         "<b>CP1 E1 10000 E2 20000 E3 30000</b>\n\n",
         parse_mode="HTML",
-        reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Atrás", callback_data="back")]])
+        reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔙", callback_data="back")]])
     )
     return states.T_CP_CREATE_STRING
 async def practic_class_string(update: Update, context: ContextTypes):
@@ -98,7 +98,7 @@ async def practic_class_string(update: Update, context: ContextTypes):
     if practic_class:
         await update.message.reply_text(
             "Ya existe una clase práctica con ese nombre, por favor ingrese otro nombre",
-            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Atrás", callback_data="back")]])
+            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔙", callback_data="back")]])
         )
         return states.T_CP_CREATE_STRING
     
@@ -108,14 +108,14 @@ async def practic_class_string(update: Update, context: ContextTypes):
     if len(exercises) % 2 != 0:
         await update.message.reply_text(
             "El formato de la clase práctica es incorrecto, por favor intente de nuevo",
-            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Atrás", callback_data="back")]])
+            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔙", callback_data="back")]])
         )
         return states.T_CP_CREATE_STRING
     for i in range(0, len(exercises), 2):
         if not exercises[i+1].isdigit():
             await update.message.reply_text(
                 "El formato de la clase práctica es incorrecto, por favor intente de nuevo",
-                reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Atrás", callback_data="back")]])
+                reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔙", callback_data="back")]])
             )
             return states.T_CP_CREATE_STRING
     
@@ -125,7 +125,7 @@ async def practic_class_string(update: Update, context: ContextTypes):
 
     await update.message.reply_text(
         "Inserte la fecha de la clase práctica en este formato: dd-mm-aaaa",
-        reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Atrás", callback_data="back")]])
+        reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔙", callback_data="back")]])
     )
     return states.T_CP_CREATE_DATE
 async def practic_class_date(update: Update, context: ContextTypes):
@@ -137,7 +137,7 @@ async def practic_class_date(update: Update, context: ContextTypes):
     except ValueError:
         await update.message.reply_text(
             "El formato de la fecha es incorrecto, por favor intente de nuevo",
-            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Atrás", callback_data="back")]])
+            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔙", callback_data="back")]])
         )
         return states.T_CP_CREATE_DATE
     
@@ -211,7 +211,7 @@ async def practic_class_file(update: Update, context: ContextTypes):
     # show practic classes with pagination
     practic_classes = practic_class_sql.get_practic_classes(classroom_id=classroom_id, include_hidden=True)
     buttons = [InlineKeyboardButton(f"{i}. {token_type_sql.get_token_type(activity_type_sql.get_activity_type(practic_class.activity_type_id).token_type_id).type}", callback_data=f"practic_class#{practic_class.id}") for i, practic_class in enumerate(practic_classes, start=1)]
-    other_buttons = [InlineKeyboardButton("Crear clase práctica", callback_data="create_practic_class")]
+    other_buttons = [InlineKeyboardButton("➕ Crear clase práctica", callback_data="create_practic_class")]
     
     if query:
         await query.edit_message_text(
@@ -253,11 +253,11 @@ async def practic_class_selected(update: Update, context: ContextTypes):
         exercises.sort(key=lambda x: token_sql.get_token(activity_sql.get_activity(x.activity_id).token_id).name)
         buttons = [InlineKeyboardButton(f"{i}. {token_sql.get_token(activity_sql.get_activity(exercise.activity_id).token_id).name} - ({exercise.value})", callback_data=f"exercise#{exercise.id}") for i, exercise in enumerate(exercises, start=1)]    
         other_buttons = [
-            InlineKeyboardButton("Crear ejercicio", callback_data=f"create_exercise#{practic_class_id}"),
+            InlineKeyboardButton("➕ Crear ejercicio", callback_data=f"create_exercise#{practic_class_id}"),
             InlineKeyboardButton("Cambiar fecha", callback_data="practic_class_change_date"),
             InlineKeyboardButton("Cambiar descripción", callback_data="practic_class_change_description"),
             InlineKeyboardButton("Enviar otro archivo", callback_data="practic_class_change_file"),
-            InlineKeyboardButton("Eliminar clase práctica", callback_data="practic_class_delete"),
+            InlineKeyboardButton("➖ Eliminar clase práctica", callback_data="practic_class_delete"),
             InlineKeyboardButton("Participantes", callback_data="practic_class_participants"),
         ]
         if activity_type.FileID:
@@ -274,13 +274,13 @@ async def practic_class_selected(update: Update, context: ContextTypes):
         if activity_type.FileID:
             try:
                 try:
-                    await query.message.reply_photo(activity_type.FileID, caption=text, parse_mode="HTML", reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Crear ejercicio", callback_data=f"create_exercise#{practic_class_id}")],] + keyboards.TEACHER_PRACTIC_CLASS_OPTIONS))
+                    await query.message.reply_photo(activity_type.FileID, caption=text, parse_mode="HTML", reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("➕ Crear ejercicio", callback_data=f"create_exercise#{practic_class_id}")],] + keyboards.TEACHER_PRACTIC_CLASS_OPTIONS))
                 except BadRequest:
-                    await query.message.reply_document(activity_type.FileID, caption=text, parse_mode="HTML", reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Crear ejercicio", callback_data=f"create_exercise#{practic_class_id}")],] + keyboards.TEACHER_PRACTIC_CLASS_OPTIONS))
+                    await query.message.reply_document(activity_type.FileID, caption=text, parse_mode="HTML", reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("➕ Crear ejercicio", callback_data=f"create_exercise#{practic_class_id}")],] + keyboards.TEACHER_PRACTIC_CLASS_OPTIONS))
             except BadRequest:
-                await query.edit_message_text("Se ha producido un error al enviar el archivo. Puede intentar editar la clase práctica para enviar otro archivo.\n\n" + text, parse_mode="HTML", reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Crear ejercicio", callback_data=f"create_exercise#{practic_class_id}")],] + keyboards.TEACHER_PRACTIC_CLASS_OPTIONS))
+                await query.edit_message_text("Se ha producido un error al enviar el archivo. Puede intentar editar la clase práctica para enviar otro archivo.\n\n" + text, parse_mode="HTML", reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("➕ Crear ejercicio", callback_data=f"create_exercise#{practic_class_id}")],] + keyboards.TEACHER_PRACTIC_CLASS_OPTIONS))
         else:
-            await query.edit_message_text(text, parse_mode="HTML", reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Crear ejercicio", callback_data=f"create_exercise#{practic_class_id}")],] + keyboards.TEACHER_PRACTIC_CLASS_OPTIONS))
+            await query.edit_message_text(text, parse_mode="HTML", reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("➕ Crear ejercicio", callback_data=f"create_exercise#{practic_class_id}")],] + keyboards.TEACHER_PRACTIC_CLASS_OPTIONS))
     return states.T_CP_INFO
 async def practic_class_edit_date(update: Update, context: ContextTypes):
     """ Asks for the new date"""
@@ -291,12 +291,12 @@ async def practic_class_edit_date(update: Update, context: ContextTypes):
         await query.edit_message_caption(
             query.message.caption + "\n\n"
             "Inserte la nueva fecha de la clase práctica en este formato: dd-mm-aaaa",
-            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Atrás", callback_data="back")]]),
+            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔙", callback_data="back")]]),
         )
     else:
         await query.edit_message_text(
             "Inserte la nueva fecha de la clase práctica en este formato: dd-mm-aaaa",
-            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Atrás", callback_data="back")]])
+            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔙", callback_data="back")]])
         )
     return states.T_CP_EDIT_DATE
 async def practic_class_edit_date_done(update: Update, context: ContextTypes):
@@ -308,7 +308,7 @@ async def practic_class_edit_date_done(update: Update, context: ContextTypes):
     except ValueError:
         await update.message.reply_text(
             "El formato de la fecha es incorrecto, por favor intente de nuevo",
-            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Atrás", callback_data="back")]])
+            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔙", callback_data="back")]])
         )
         return states.T_CP_EDIT_DATE
     
@@ -328,12 +328,12 @@ async def practic_class_edit_description(update: Update, context: ContextTypes):
         await query.edit_message_caption(
             query.message.caption + "\n\n"
             "Inserte la nueva descripción de la clase práctica.",
-            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Atrás", callback_data="back")]])
+            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔙", callback_data="back")]])
         )
     else:
         await query.edit_message_text(
             "Inserte la nueva descripción de la clase práctica.",
-            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Atrás", callback_data="back")]])
+            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔙", callback_data="back")]])
         )
     return states.T_CP_EDIT_DESCRIPTION
 async def practic_class_edit_description_done(update: Update, context: ContextTypes):
@@ -356,12 +356,12 @@ async def practic_class_edit_file(update: Update, context: ContextTypes):
         await query.edit_message_caption(
             query.message.caption + "\n\n"
             "Inserte el nuevo archivo de la clase práctica.",
-            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Atrás", callback_data="back")]])
+            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔙", callback_data="back")]])
         )
     else:
         await query.edit_message_text(
             "Inserte el nuevo archivo de la clase práctica.",
-            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Atrás", callback_data="back")]])
+            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔙", callback_data="back")]])
         )
     return states.T_CP_EDIT_FILE
 async def practic_class_edit_file_done(update: Update, context: ContextTypes):
@@ -473,12 +473,12 @@ async def create_exercise(update: Update, context: ContextTypes):
         await query.edit_message_caption(
             query.message.caption + "\n\n"
             "Ingrese el nombre del ejercicio.",
-            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Atrás", callback_data="back")]])
+            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔙", callback_data="back")]])
         )
     else:
         await query.edit_message_text(
             "Ingrese el nombre del ejercicio.",
-            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Atrás", callback_data="back")]])
+            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔙", callback_data="back")]])
         )
     return states.T_CP_CREATE_EXERCISE_NAME
 async def practic_class_exercise_name(update: Update, context: ContextTypes):
@@ -488,7 +488,7 @@ async def practic_class_exercise_name(update: Update, context: ContextTypes):
     context.user_data["practic_class"]["exercise_name"] = name
     await update.message.reply_text(
         "Ingrese el valor del ejercicio.",
-        reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Atrás", callback_data="back")]])
+        reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔙", callback_data="back")]])
     )
     return states.T_CP_CREATE_EXERCISE_VALUE
 async def practic_class_exercise_value(update: Update, context: ContextTypes):
@@ -498,7 +498,7 @@ async def practic_class_exercise_value(update: Update, context: ContextTypes):
     if not value.isdigit():
         await update.message.reply_text(
             "El formato del valor es incorrecto, por favor intente de nuevo",
-            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Atrás", callback_data="back")]])
+            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔙", callback_data="back")]])
         )
         return states.T_CP_CREATE_EXERCISE_VALUE
     # save in context
@@ -547,12 +547,12 @@ async def practic_class_exercise_file(update: Update, context: ContextTypes):
     if query:
         await query.edit_message_text(
             "Permitir créditos parciales?\n\nEsto significa que si el estudiante envia una ejercicio parcialmente completo/correcto, el profesor puede aprobar la tarea y asignarle una cantidad de créditos entre 0 y el valor máximo del ejercicio.",
-            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Si", callback_data="yes"), InlineKeyboardButton("No", callback_data="no")]])
+            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🟢 Si", callback_data="yes"), InlineKeyboardButton("🔴 No", callback_data="no")]])
         )
     else:
         await update.message.reply_text(
             "Permitir créditos parciales?\n\nEsto significa que si el estudiante envia una ejercicio parcialmente completo/correcto, el profesor puede aprobar la tarea y asignarle una cantidad de créditos entre 0 y el valor máximo del ejercicio.",
-            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Si", callback_data="yes"), InlineKeyboardButton("No", callback_data="no")]])
+            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🟢 Si", callback_data="yes"), InlineKeyboardButton("🔴 No", callback_data="no")]])
         )
     return states.T_CP_CREATE_EXERCISE_PARTIAL_CREDITS
 async def practic_class_exercise_partial_credits(update: Update, context: ContextTypes):
@@ -594,11 +594,11 @@ async def practic_class_exercise_partial_credits(update: Update, context: Contex
     exercises.sort(key=lambda x: token_sql.get_token(activity_sql.get_activity(x.activity_id).token_id).name)
     buttons = [InlineKeyboardButton(f"{i}. {token_sql.get_token(activity_sql.get_activity(exercise.activity_id).token_id).name} - ({exercise.value})", callback_data=f"exercise#{exercise.id}") for i, exercise in enumerate(exercises, start=1)]
     other_buttons = [
-        InlineKeyboardButton("Crear ejercicio", callback_data=f"create_exercise#{practic_class_id}"),
+        InlineKeyboardButton("➕Crear ejercicio", callback_data=f"create_exercise#{practic_class_id}"),
         InlineKeyboardButton("Cambiar fecha", callback_data="practic_class_change_date"),
         InlineKeyboardButton("Cambiar descripción", callback_data="practic_class_change_description"),
         InlineKeyboardButton("Enviar otro archivo", callback_data="practic_class_change_file"),
-        InlineKeyboardButton("Eliminar clase práctica", callback_data="practic_class_delete"),
+        InlineKeyboardButton("➖ Eliminar clase práctica", callback_data="practic_class_delete"),
     ]
     if query:
         if activity_type.FileID:
@@ -814,7 +814,7 @@ async def review_exercise_select_student(update: Update, context: ContextTypes):
         else:
             await query.edit_message_text(
                 "Ingrese la cantidad de créditos entre 0 y el valor máximo del ejercicio.",
-                reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Atrás", callback_data="back")]])
+                reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔙", callback_data="back")]])
             )
         return states.T_CP_EXERCISE_REVIEW_PARTIAL_CREDITS
     else:    
@@ -829,7 +829,7 @@ async def review_exercise_select_student(update: Update, context: ContextTypes):
             else:
                 await query.edit_message_text(
                     "El estudiante envió el ejercicio antes de la fecha de la clase práctica?",
-                    reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Si", callback_data="yes"), InlineKeyboardButton("No", callback_data="no")]])
+                    reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🟢 Si", callback_data="yes"), InlineKeyboardButton("🔴 No", callback_data="no")]])
                 )
             return states.T_CP_EXERCISE_REVIEW_DATE
         else:
@@ -877,7 +877,7 @@ async def review_partial_credits(update: Update, context: ContextTypes):
     if int(partial_value) < 0 or int(partial_value) > exercise.value:
         await update.message.reply_text(
             f"El valor debe estar entre 0 y el valor del ejercicio: {exercise.value}",
-            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Atrás", callback_data="back")]])
+            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔙", callback_data="back")]])
         )
         return states.T_CP_EXERCISE_REVIEW_PARTIAL_CREDITS
     
@@ -888,7 +888,7 @@ async def review_partial_credits(update: Update, context: ContextTypes):
         # ask if student sent the exercise before the practic class date
         await update.message.reply_text(
             "El estudiante envió el ejercicio antes de la fecha de la clase práctica?",
-            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Si", callback_data="yes"), InlineKeyboardButton("No", callback_data="no")]])
+            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🟢 Si", callback_data="yes"), InlineKeyboardButton("🔴 No", callback_data="no")]])
         )
         return states.T_CP_EXERCISE_REVIEW_DATE
     else:
@@ -972,11 +972,13 @@ async def teacher_practic_classes_back(update: Update, context: ContextTypes):
     course_name = course_sql.get_course(classroom.course_id).name
 
     await query.message.reply_text(
-        f"Bienvenido profe {user_sql.get_user_by_chatid(update.effective_user.id).fullname}!\n\n"
-        f"Curso: {course_name}\n"
-        f"Aula: {classroom.name}\n"
-        f"Menu en construcción...",
+        bot_text.main_menu(
+            fullname=user_sql.get_user_by_chatid(update.effective_user.id).fullname,
+            role="teacher",
+            classroom_name=classroom.name,
+        ),
         reply_markup=ReplyKeyboardMarkup(keyboards.TEACHER_MAIN_MENU, one_time_keyboard=True, resize_keyboard=True),
+        parse_mode="HTML",
     )
 
     if "practic_class" in context.user_data:
@@ -1050,7 +1052,7 @@ teacher_practic_classes_conv = ConversationHandler(
     },
     fallbacks=[
         CallbackQueryHandler(teacher_practic_classes_back, pattern="back"),
-        MessageHandler(filters.Regex("^Atrás$"), back_to_teacher_menu)
+        MessageHandler(filters.Regex("^🔙$"), back_to_teacher_menu)
     ],
     allow_reentry=True,
 )

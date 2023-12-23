@@ -40,7 +40,7 @@ def paginated_keyboard(buttons: list[InlineKeyboardButton], page: int = 1, conte
 
     # Add back button
     if add_back:
-        keyboard.append([InlineKeyboardButton("Atrás", callback_data="back")])
+        keyboard.append([InlineKeyboardButton("🔙", callback_data="back")])
 
     return InlineKeyboardMarkup(keyboard)
 
