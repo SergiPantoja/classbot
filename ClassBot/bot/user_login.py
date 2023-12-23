@@ -13,7 +13,7 @@ from sql import (
     user_sql, student_sql, teacher_sql, course_sql, classroom_sql, student_classroom_sql,
     teacher_classroom_sql, token_sql, token_type_sql, student_token_sql
 )
-from bot.utils import states, keyboards
+from bot.utils import states, keyboards, bot_text
 from bot.utils.inline_keyboard_pagination import paginator, paginated_keyboard, paginator_handler
 
 
@@ -35,7 +35,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     else:       # ask for fullname to create new user
         logger.info("New user detected, asking for fullname...")
         await update.message.reply_text(
-            "Hola! Soy senyor bigotes, su asistente de clases personal.\n\n"
+            "Hola! Soy su asistente de clases personal.\n\n"
             "Para comenzar, por favor ingrese su nombre completo:",
             reply_markup=ReplyKeyboardRemove(),
         )
@@ -77,7 +77,7 @@ async def role_selected(update: Update, context: ContextTypes.DEFAULT_TYPE):
     If is first time loging in it inserts the corresponding rows in either student or teacher tables with
     the user_id since this are inherited tables from the user table."""
     logger.info("User %s selected role %s", update.message.from_user.first_name, update.message.text)
-    if update.message.text == "Estudiante":
+    if update.message.text == "🧑‍🎓 Estudiante":
         # User is a student, check if it has an student account
         user_id = user_sql.get_user_by_chatid(update.effective_chat.id).id
         if not student_sql.get_student(user_id):
@@ -92,7 +92,7 @@ async def role_selected(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return states.STUDENT_LOGIN
     
-    elif update.message.text == "Profesor":
+    elif update.message.text == "🧑‍🏫 Profesor":
         # User is a teacher, check if it has a teacher account
         user_id = user_sql.get_user_by_chatid(update.effective_chat.id).id
         if not teacher_sql.get_teacher(user_id):
@@ -147,11 +147,15 @@ async def student_login(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         # show student main menu and classroom info
         await update.message.reply_text(
-            f"Bienvenido {user_sql.get_user_by_chatid(update.effective_chat.id).fullname}!\n\n"
-            f"Curso: {course_sql.get_course(classroom.course_id).name}\n"
-            f"Aula: {classroom.name}\n"
-            f"menu en construccion...",
+            bot_text.main_menu(
+                user_sql.get_user_by_chatid(update.effective_chat.id).fullname,
+                role="student",
+                course_name=course_sql.get_course(classroom.course_id).name,
+                classroom_name=classroom.name,
+                welcome=True
+            ),
             reply_markup=ReplyKeyboardMarkup(keyboards.STUDENT_MAIN_MENU, one_time_keyboard=True, resize_keyboard=True),
+            parse_mode="HTML",
         )
 
         return ConversationHandler.END
@@ -216,11 +220,15 @@ async def teacher_enter(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         # show teacher main menu and classroom info
         await update.message.reply_text(
-            f"Bienvenido profe {user_sql.get_user_by_chatid(update.effective_chat.id).fullname}!\n\n"
-            f"Curso: {course_sql.get_course(classroom.course_id).name}\n"
-            f"Aula: {classroom.name}\n"
-            f"menu en construccion...",
+            bot_text.main_menu(
+                user_sql.get_user_by_chatid(update.effective_chat.id).fullname,
+                role="teacher",
+                course_name=course_sql.get_course(classroom.course_id).name,
+                classroom_name=classroom.name,
+                welcome=True
+            ),
             reply_markup=ReplyKeyboardMarkup(keyboards.TEACHER_MAIN_MENU, one_time_keyboard=True, resize_keyboard=True),
+            parse_mode="HTML",
         )
 
         return ConversationHandler.END
@@ -398,11 +406,15 @@ async def new_classroom(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         # show teacher main menu and classroom info
         await update.message.reply_text(
-            f"Bienvenido profe {user_sql.get_user_by_chatid(update.effective_chat.id).fullname}!\n\n"
-            f"Curso: {course_sql.get_course(course_id).name}\n"
-            f"Aula: {classroom_name}\n"
-            f"menu en construccion...",
+            bot_text.main_menu(
+                user_sql.get_user_by_chatid(update.effective_chat.id).fullname,
+                role="teacher",
+                course_name=course_sql.get_course(course_id).name,
+                classroom_name=classroom_name,
+                welcome=True
+            ),
             reply_markup=ReplyKeyboardMarkup(keyboards.TEACHER_MAIN_MENU, one_time_keyboard=True, resize_keyboard=True),
+            parse_mode="HTML",
         )
 
         return ConversationHandler.END

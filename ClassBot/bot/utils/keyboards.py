@@ -3,7 +3,7 @@ from telegram import InlineKeyboardButton
 
 CANCEL = [["/cancel"]]
 NEW_USER = [["Crear cuenta", "/cancel"]]
-SELECT_ROLE = [["Estudiante", "Profesor"]]
+SELECT_ROLE = [["🧑‍🎓 Estudiante", "🧑‍🏫 Profesor"]]
 TEACHER_LOGIN = [["Ingresar al aula", "Crear"]]
 TEACHER_CREATE = [["Crear curso", "Crear aula"]]
 
