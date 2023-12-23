@@ -620,7 +620,40 @@ async def exercise_selected(update: Update, context: ContextTypes):
             await query.edit_message_text(text, parse_mode="HTML", reply_markup=InlineKeyboardMarkup(keyboards.TEACHER_PRACTIC_CLASS_EXERCISE_OPTIONS))
     return states.T_CP_EXERCISE_INFO
 async def practic_class_exercise_delete(update: Update, context: ContextTypes):
-    pass
+    """ Ask for confirmation to delete the exercise """
+    query = update.callback_query
+    await query.answer()
+
+    if query.message.caption:
+        await query.edit_message_caption(
+            query.message.caption + "\n\n"
+            "Está seguro que desea eliminar este ejercicio? Esta acción no se puede deshacer.",
+            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Si", callback_data="practic_class_exercise_delete_confirm"), InlineKeyboardButton("No", callback_data="back")]])
+        )
+    else:
+        await query.edit_message_text(
+            "Está seguro que desea eliminar este ejercicio? Esta acción no se puede deshacer.",
+            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Si", callback_data="practic_class_exercise_delete_confirm"), InlineKeyboardButton("No", callback_data="back")]])
+        )
+    return states.T_CP_EXERCISE_DELETE
+async def practic_class_exercise_delete_confirm(update: Update, context: ContextTypes):
+    """ Deletes the practic class exercise.
+        Deletes the token of the activity of the exercise and
+        should delete the activity -> practic_class_exercise in cascade.
+    """
+    query = update.callback_query
+    await query.answer()
+
+    exercise_id = context.user_data["practic_class"]["exercise_id"]
+    token_id = activity_sql.get_activity(practic_class_exercises_sql.get_practic_class_exercise(exercise_id).activity_id).token_id
+    token_sql.delete_token(token_id)
+    logger.info(f"Deleted token {token_id}")
+    await query.message.reply_text(
+        "Ejercicio eliminado",
+        reply_markup=ReplyKeyboardMarkup(keyboards.TEACHER_MAIN_MENU, one_time_keyboard=True, resize_keyboard=True),
+    )
+    return ConversationHandler.END
+
 async def practic_class_exercise_review(update: Update, context: ContextTypes):
     pass
     
@@ -700,6 +733,7 @@ teacher_practic_classes_conv = ConversationHandler(
             CallbackQueryHandler(practic_class_exercise_delete, pattern=r"^practic_class_exercise_delete$"),
             CallbackQueryHandler(practic_class_exercise_review, pattern=r"^practic_class_exercise_review$"),
         ],
+        states.T_CP_EXERCISE_DELETE: [CallbackQueryHandler(practic_class_exercise_delete_confirm, pattern=r"^practic_class_exercise_delete_confirm$")],
     },
     fallbacks=[
         CallbackQueryHandler(teacher_practic_classes_back, pattern="back"),

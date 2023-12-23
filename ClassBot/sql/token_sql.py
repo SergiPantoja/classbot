@@ -50,3 +50,12 @@ def update_description(id: int, description: str):
     with session() as s:
         s.query(Token).filter(Token.id == id).update({Token.description: description})
         s.commit()
+
+def delete_token(id: int):
+    """ Deletes a token from the database. """
+    with session() as s:
+        # get token
+        token = s.execute(select(Token).where(Token.id == id)).scalar_one()
+        # delete token
+        s.delete(token)
+        s.commit()
