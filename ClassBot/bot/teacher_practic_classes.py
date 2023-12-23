@@ -655,8 +655,224 @@ async def practic_class_exercise_delete_confirm(update: Update, context: Context
     return ConversationHandler.END
 
 async def practic_class_exercise_review(update: Update, context: ContextTypes):
-    pass
+    """ Here teachers manually give credits to students for an exercise of a practic class"""
+    query = update.callback_query
+    await query.answer()
+
+    # get exercise
+    exercise = practic_class_exercises_sql.get_practic_class_exercise(context.user_data["practic_class"]["exercise_id"])
+    activity = activity_sql.get_activity(exercise.activity_id)
+    token = token_sql.get_token(activity.token_id)
+
+    # get students that dont have a grade for this exercise yet
+    students = student_sql.get_students_by_classroom(token.classroom_id)
+    students = [student for student in students if not student_token_sql.exists(student.id, token.id)]
+    if not students:
+        if query.message.caption:
+            await query.edit_message_caption(
+                query.message.caption + "\n\n"
+                "Todos los estudiantes ya tienen una nota para este ejercicio.",
+                reply_markup=InlineKeyboardMarkup(keyboards.TEACHER_PRACTIC_CLASS_EXERCISE_OPTIONS)
+            )
+        else:
+            await query.edit_message_text(
+                "Todos los estudiantes ya tienen una nota para este ejercicio.",
+                reply_markup=InlineKeyboardMarkup(keyboards.TEACHER_PRACTIC_CLASS_EXERCISE_OPTIONS)
+            )
+        return states.T_CP_EXERCISE_INFO
+    buttons = [InlineKeyboardButton(f"{i}. {user_sql.get_user(student.id).fullname}", callback_data=f"student#{student.id}") for i, student in enumerate(students, start=1)]
+    text = "Seleccione al estudiante"
+
+    if query.message.caption:
+        await query.edit_message_caption(
+            text,
+            reply_markup=paginated_keyboard(buttons, context=context, add_back=True)
+        )
+    else:
+        await query.edit_message_text(
+            text,
+            reply_markup=paginated_keyboard(buttons, context=context, add_back=True)
+        )
+    return states.T_CP_EXERCISE_REVIEW
+async def review_exercise_select_student(update: Update, context: ContextTypes):
+    """ Saves the student id. 
+        Then checks if the exercise allows partial credits, if it does, asks 
+        for the credits amount (optional but if sent must be between 0 and the
+        exercise max value). If it doesnt allow partial credits, goes to the next
+        check.
+        Then checks if the practic class date is in the past, if it is, asks if 
+        the student sent the exercise before the practic class date (for cases
+        where the teacher didnt have time to review it yet). If it isnt,
+        it means the student sent the exercise before the date.
+        Finally, if none of the previous checks apply, it approves the exercise,
+        assigns the credits and sends a message to the student.
+    """
+    query = update.callback_query
+    await query.answer()
+
+    student_id = int(query.data.split("#")[1])
+    # save student id in context
+    context.user_data["practic_class"]["student_id"] = student_id
+
+    # get exercise and practic class
+    exercise = practic_class_exercises_sql.get_practic_class_exercise(context.user_data["practic_class"]["exercise_id"])
+    practic_class = practic_class_sql.get_practic_class(exercise.practic_class_id)
+
+    # check if exercise allows partial credits
+    if exercise.partial_credits_allowed:
+        if query.message.caption:
+            await query.edit_message_caption(
+                "Ingrese la cantidad de créditos entre 0 y el valor máximo del ejercicio.",
+                reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Atrás", callback_data="back")]])
+            )
+        else:
+            await query.edit_message_text(
+                "Ingrese la cantidad de créditos entre 0 y el valor máximo del ejercicio.",
+                reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Atrás", callback_data="back")]])
+            )
+        return states.T_CP_EXERCISE_REVIEW_PARTIAL_CREDITS
+    else:    
+        # check if practic class date is in the past
+        if practic_class.date < datetime.datetime.now():
+            # ask if student sent the exercise before the practic class date
+            if query.message.caption:
+                await query.edit_message_caption(
+                    "El estudiante envió el ejercicio antes de la fecha de la clase práctica?",
+                    reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Si", callback_data="yes"), InlineKeyboardButton("No", callback_data="no")]])
+                )
+            else:
+                await query.edit_message_text(
+                    "El estudiante envió el ejercicio antes de la fecha de la clase práctica?",
+                    reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Si", callback_data="yes"), InlineKeyboardButton("No", callback_data="no")]])
+                )
+            return states.T_CP_EXERCISE_REVIEW_DATE
+        else:
+            # No partial credits and date is in the future, assing max value x2 (bonus for sending it early)
+            student = student_sql.get_student(student_id)
+            token = token_sql.get_token(activity_sql.get_activity(exercise.activity_id).token_id)
+            teacher = teacher_sql.get_teacher(user_sql.get_user_by_chatid(update.effective_user.id).id)
+            student_token_sql.add_student_token(student.id, token.id, exercise.value * 2, teacher_id=teacher.id)
+            logger.info(f"Added {exercise.value * 2} credits to student {student.id} for exercise {token.name}")
+            # Create approved pending
+            token_type = token_type_sql.get_token_type(activity_type_sql.get_activity_type(practic_class_sql.get_practic_class(exercise.practic_class_id).activity_type_id).token_type_id)
+            text = f"Créditos otorgados manualmente por el profesor {user_sql.get_user_by_chatid(update.effective_user.id).fullname} al estudiantes {user_sql.get_user(student.id).fullname} por el ejercicio {token.name} de la clase práctica {token_type.type}"
+            pending_sql.add_pending(student_id=student.id, classroom_id=teacher.active_classroom_id, token_type_id=token_type.id, token_id=token.id, status="APPROVED", approved_by=teacher.id, text=text)
+            # notify student
+            text = f"El profesor {user_sql.get_user_by_chatid(update.effective_user.id).fullname} le ha otorgado {exercise.value * 2} créditos por el ejercicio {token.name} de la clase práctica {token_type.type}"
+            try:
+                await context.bot.send_message(
+                    chat_id=user_sql.get_user(student.id).telegram_chatid,
+                    text=text,
+                )
+            except BadRequest:
+                logger.error(f"Error sending message to student {user_sql.get_user(student.id).fullname} (chat_id: {user_sql.get_user(student.id).telegram_chatid})")
+            await query.message.reply_text(
+                "Créditos otorgados!",
+                reply_markup=ReplyKeyboardMarkup(keyboards.TEACHER_MAIN_MENU, one_time_keyboard=True, resize_keyboard=True),
+            )
+            return ConversationHandler.END
+async def review_partial_credits(update: Update, context: ContextTypes):
+    """ Receives partial credits amount and validates it.
+        Then check date and either approves the exercise or asks if the student
+        sent the exercise before the date.
+    """
+    partial_value = update.message.text
+    # validate value
+    if not partial_value.isdigit():
+        await update.message.reply_text(
+            "El formato del valor es incorrecto, por favor intente de nuevo",
+            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Atrás", callback_data="back")]])
+        )
+        return states.T_CP_EXERCISE_REVIEW_PARTIAL_CREDITS
+    # get exercise and practic class
+    exercise = practic_class_exercises_sql.get_practic_class_exercise(context.user_data["practic_class"]["exercise_id"])
+    practic_class = practic_class_sql.get_practic_class(exercise.practic_class_id)
+    # check if value is between 0 and max value
+    if int(partial_value) < 0 or int(partial_value) > exercise.value:
+        await update.message.reply_text(
+            f"El valor debe estar entre 0 y el valor del ejercicio: {exercise.value}",
+            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Atrás", callback_data="back")]])
+        )
+        return states.T_CP_EXERCISE_REVIEW_PARTIAL_CREDITS
     
+    # check if practic class date is in the past
+    if practic_class.date < datetime.datetime.now():
+        # save partial value in context
+        context.user_data["practic_class"]["partial_value"] = partial_value
+        # ask if student sent the exercise before the practic class date
+        await update.message.reply_text(
+            "El estudiante envió el ejercicio antes de la fecha de la clase práctica?",
+            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Si", callback_data="yes"), InlineKeyboardButton("No", callback_data="no")]])
+        )
+        return states.T_CP_EXERCISE_REVIEW_DATE
+    else:
+        # Partial credits and date is in the future, assing partial value x2 (bonus for sending it early)
+        student = student_sql.get_student(context.user_data["practic_class"]["student_id"])
+        token = token_sql.get_token(activity_sql.get_activity(exercise.activity_id).token_id)
+        teacher = teacher_sql.get_teacher(user_sql.get_user_by_chatid(update.effective_user.id).id)
+        student_token_sql.add_student_token(student.id, token.id, int(partial_value) * 2, teacher_id=teacher.id)
+        logger.info(f"Added {int(partial_value) * 2} credits to student {student.id} for exercise {token.name}")
+        # Create approved pending
+        token_type = token_type_sql.get_token_type(activity_type_sql.get_activity_type(practic_class_sql.get_practic_class(exercise.practic_class_id).activity_type_id).token_type_id)
+        text = f"Créditos otorgados manualmente por el profesor {user_sql.get_user_by_chatid(update.effective_user.id).fullname} al estudiantes {user_sql.get_user(student.id).fullname} por el ejercicio {token.name} de la clase práctica {token_type.type}"
+        pending_sql.add_pending(student_id=student.id, classroom_id=teacher.active_classroom_id, token_type_id=token_type.id, token_id=token.id, status="APPROVED", approved_by=teacher.id, text=text)
+        # notify student
+        text = f"El profesor {user_sql.get_user_by_chatid(update.effective_user.id).fullname} le ha otorgado {int(partial_value) * 2} créditos por el ejercicio {token.name} de la clase práctica {token_type.type}"
+        try:
+            await context.bot.send_message(
+                chat_id=user_sql.get_user(student.id).telegram_chatid,
+                text=text,
+            )
+        except BadRequest:
+            logger.error(f"Error sending message to student {user_sql.get_user(student.id).fullname} (chat_id: {user_sql.get_user(student.id).telegram_chatid})")
+        await update.message.reply_text(
+            "Créditos otorgados!",
+            reply_markup=ReplyKeyboardMarkup(keyboards.TEACHER_MAIN_MENU, one_time_keyboard=True, resize_keyboard=True),
+        )
+        return ConversationHandler.END
+async def review_exercise_date(update: Update, context: ContextTypes):
+    """ If the student sent the exercise before the date, assing double the credits.
+        If not, assing just the value, where value is the partial credits amount
+        if 'partial_value' is in context, else is the max value.
+    """
+    query = update.callback_query
+    await query.answer()
+
+    sent_before_date = query.data == "yes"
+    # get exercise
+    exercise = practic_class_exercises_sql.get_practic_class_exercise(context.user_data["practic_class"]["exercise_id"])
+    # get value
+    if "partial_value" in context.user_data["practic_class"]:
+        value = int(context.user_data["practic_class"]["partial_value"])
+    else:
+        value = exercise.value
+    if sent_before_date:
+        value *= 2
+    
+    # assing credits
+    student = student_sql.get_student(context.user_data["practic_class"]["student_id"])
+    token = token_sql.get_token(activity_sql.get_activity(exercise.activity_id).token_id)
+    teacher = teacher_sql.get_teacher(user_sql.get_user_by_chatid(update.effective_user.id).id)
+    student_token_sql.add_student_token(student.id, token.id, value, teacher_id=teacher.id)
+    logger.info(f"Added {value} credits to student {student.id} for exercise {token.name}")
+    # Create approved pending
+    token_type = token_type_sql.get_token_type(activity_type_sql.get_activity_type(practic_class_sql.get_practic_class(exercise.practic_class_id).activity_type_id).token_type_id)
+    text = f"Créditos otorgados manualmente por el profesor {user_sql.get_user_by_chatid(update.effective_user.id).fullname} al estudiantes {user_sql.get_user(student.id).fullname} por el ejercicio {token.name} de la clase práctica {token_type.type}"
+    pending_sql.add_pending(student_id=student.id, classroom_id=teacher.active_classroom_id, token_type_id=token_type.id, token_id=token.id, status="APPROVED", approved_by=teacher.id, text=text)
+    # notify student
+    text = f"El profesor {user_sql.get_user_by_chatid(update.effective_user.id).fullname} le ha otorgado {value} créditos por el ejercicio {token.name} de la clase práctica {token_type.type}"
+    try:
+        await context.bot.send_message(
+            chat_id=user_sql.get_user(student.id).telegram_chatid,
+            text=text,
+        )
+    except BadRequest:
+        logger.error(f"Error sending message to student {user_sql.get_user(student.id).fullname} (chat_id: {user_sql.get_user(student.id).telegram_chatid})")
+    await query.message.reply_text(
+        "Créditos otorgados!",
+        reply_markup=ReplyKeyboardMarkup(keyboards.TEACHER_MAIN_MENU, one_time_keyboard=True, resize_keyboard=True),
+    )
+    return ConversationHandler.END
 
 async def teacher_practic_classes_back(update: Update, context: ContextTypes):
     """ Go back to teacher main menu """
@@ -734,6 +950,13 @@ teacher_practic_classes_conv = ConversationHandler(
             CallbackQueryHandler(practic_class_exercise_review, pattern=r"^practic_class_exercise_review$"),
         ],
         states.T_CP_EXERCISE_DELETE: [CallbackQueryHandler(practic_class_exercise_delete_confirm, pattern=r"^practic_class_exercise_delete_confirm$")],
+
+        states.T_CP_EXERCISE_REVIEW: [
+            CallbackQueryHandler(review_exercise_select_student, pattern=r"^student#"),
+            paginator_handler,
+        ],
+        states.T_CP_EXERCISE_REVIEW_PARTIAL_CREDITS: [MessageHandler(filters.TEXT & ~filters.COMMAND, review_partial_credits)],
+        states.T_CP_EXERCISE_REVIEW_DATE: [CallbackQueryHandler(review_exercise_date, pattern=r"^(yes|no$)")],
     },
     fallbacks=[
         CallbackQueryHandler(teacher_practic_classes_back, pattern="back"),

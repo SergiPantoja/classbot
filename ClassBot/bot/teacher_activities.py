@@ -723,7 +723,7 @@ async def review_activity(update: Update, context: ContextTypes):
                 )
             return states.T_ACTIVITY_INFO
         buttons = [InlineKeyboardButton(f"{i}. {user_sql.get_user(student.id).fullname}", callback_data=f"student#{student.id}") for i, student in enumerate(students, start=1)]
-        text = "Seleccione el estudiante:"
+        text = "Seleccione al estudiante:"
     
     if query.message.caption:
         await query.edit_message_caption(
