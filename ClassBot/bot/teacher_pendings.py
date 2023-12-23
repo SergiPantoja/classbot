@@ -311,6 +311,14 @@ async def pending_info(update: Update, context: ContextTypes):
             reply_markup=ReplyKeyboardMarkup(keyboards.TEACHER_MAIN_MENU, one_time_keyboard=True, resize_keyboard=True),
         )
     
+    # check if pending exists, since now it can be deleted when updated by a student
+    if not pending_sql.get_pending(pending_id):
+        await update.message.reply_text(
+            "El pendiente ya no existe, es posible que el estudiante haya enviado una versión actualizada.",
+            reply_markup=ReplyKeyboardMarkup(keyboards.TEACHER_MAIN_MENU, one_time_keyboard=True, resize_keyboard=True),
+        )
+        return ConversationHandler.END
+
     pending = pending_sql.get_pending(pending_id)
     student_name = user_sql.get_user(pending.student_id).fullname
     token_type = token_type_sql.get_token_type(pending.token_type_id).type
