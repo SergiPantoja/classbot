@@ -228,8 +228,62 @@ async def practic_class_file(update: Update, context: ContextTypes):
         )
     return states.T_CP_CREATE
 
-
 async def practic_class_selected(update: Update, context: ContextTypes):
+    """ Shows the details of the selected practic class.
+        Allows editing the date, the description and FileID. Also deleting the practic class.
+        Shows the exercises with pagination and allows creating new ones.
+    """
+    query = update.callback_query
+    await query.answer()
+
+    practic_class_id = int(query.data.split("#")[1])
+    # save practic class id in context
+    context.user_data["practic_class"]["practic_class_id"] = practic_class_id
+
+    practic_class = practic_class_sql.get_practic_class(practic_class_id)
+    activity_type = activity_type_sql.get_activity_type(practic_class.activity_type_id)
+    token_type = token_type_sql.get_token_type(activity_type.token_type_id)
+
+    text = f"<b>Clase práctica:</b> {token_type.type}\n"
+    text += f"<b>Fecha:</b> {practic_class.date.strftime('%d-%m-%Y')}\n"
+    if activity_type.description:
+        text += f"<b>Descripción:</b> {activity_type.description}\n"
+    text += "<b>Ejercicios:</b>\n"
+
+    exercises = practic_class_exercises_sql.get_practic_class_exercises_by_practic_class_id(practic_class_id)
+    if exercises:
+        buttons = [InlineKeyboardButton(f"{i}. {token_sql.get_token(activity_sql.get_activity(exercise.activity_id).token_id).name} - ({exercise.value})", callback_data=f"exercise#{exercise.id}") for i, exercise in enumerate(exercises, start=1)]
+        other_buttons = [
+            InlineKeyboardButton("Crear ejercicio", callback_data=f"create_exercise#{practic_class_id}"),
+            InlineKeyboardButton("Cambiar fecha", callback_data="practic_class_change_date"),
+            InlineKeyboardButton("Cambiar descripción", callback_data="practic_class_change_description"),
+            InlineKeyboardButton("Enviar otro archivo", callback_data="practic_class_change_file"),
+            InlineKeyboardButton("Eliminar clase práctica", callback_data="practic_class_delete"),
+        ]
+        if activity_type.FileID:
+            try:
+                try:
+                    await query.message.reply_photo(activity_type.FileID, caption=text, parse_mode="HTML", reply_markup=paginated_keyboard(buttons, context=context, add_back=True, other_buttons=other_buttons))
+                except BadRequest:
+                    await query.message.reply_document(activity_type.FileID, caption=text, parse_mode="HTML", reply_markup=paginated_keyboard(buttons, context=context, add_back=True, other_buttons=other_buttons))
+            except BadRequest:
+                await query.edit_message_text("Se ha producido un error al enviar el archivo. Puede intentar editar la clase práctica para enviar otro archivo.\n\n" + text, parse_mode="HTML", reply_markup=paginated_keyboard(buttons, context=context, add_back=True, other_buttons=other_buttons))
+        else:
+            await query.edit_message_text(text, parse_mode="HTML", reply_markup=paginated_keyboard(buttons, context=context, add_back=True, other_buttons=other_buttons))
+    else:
+        if activity_type.FileID:
+            try:
+                try:
+                    await query.message.reply_photo(activity_type.FileID, caption=text, parse_mode="HTML", reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Crear ejercicio", callback_data=f"create_exercise#{practic_class_id}")],] + keyboards.TEACHER_PRACTIC_CLASS_OPTIONS))
+                except BadRequest:
+                    await query.message.reply_document(activity_type.FileID, caption=text, parse_mode="HTML", reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Crear ejercicio", callback_data=f"create_exercise#{practic_class_id}")],] + keyboards.TEACHER_PRACTIC_CLASS_OPTIONS))
+            except BadRequest:
+                await query.edit_message_text("Se ha producido un error al enviar el archivo. Puede intentar editar la clase práctica para enviar otro archivo.\n\n" + text, parse_mode="HTML", reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Crear ejercicio", callback_data=f"create_exercise#{practic_class_id}")],] + keyboards.TEACHER_PRACTIC_CLASS_OPTIONS))
+        else:
+            await query.edit_message_text(text, parse_mode="HTML", reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Crear ejercicio", callback_data=f"create_exercise#{practic_class_id}")],] + keyboards.TEACHER_PRACTIC_CLASS_OPTIONS))
+    return states.T_CP_INFO
+
+async def exercise_selected(update: Update, context: ContextTypes):
     pass
 
 async def teacher_practic_classes_back(update: Update, context: ContextTypes):
@@ -263,7 +317,7 @@ teacher_practic_classes_conv = ConversationHandler(
     states={
         states.T_CP_CREATE: [
             CallbackQueryHandler(create_practic_class, pattern="create_practic_class"),
-            CallbackQueryHandler(practic_class_selected, pattern=r"^activity_type#"),
+            CallbackQueryHandler(practic_class_selected, pattern=r"^practic_class#"),
             paginator_handler,
         ],
         states.T_CP_CREATE_STRING: [MessageHandler(filters.TEXT & ~filters.COMMAND, practic_class_string)],
@@ -276,6 +330,11 @@ teacher_practic_classes_conv = ConversationHandler(
             MessageHandler(filters.Document.ALL | filters.PHOTO, practic_class_file),
             CallbackQueryHandler(practic_class_file, pattern=r"^continue$"),
             ],
+
+        states.T_CP_INFO: [
+            CallbackQueryHandler(exercise_selected, pattern=r"^exercise#"),
+            paginator_handler,
+        ],
     },
     fallbacks=[
         CallbackQueryHandler(teacher_practic_classes_back, pattern="back"),
