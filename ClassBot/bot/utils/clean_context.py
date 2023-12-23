@@ -13,6 +13,8 @@ def clean_teacher_context(context):
         context.user_data.pop("guild")
     if "activity" in context.user_data:
         context.user_data.pop("activity")
+    if "practic_class" in context.user_data:
+        context.user_data.pop("practic_class")
 
 def clean_student_context(context):
     if "pending_answer" in context.user_data:
@@ -23,3 +25,5 @@ def clean_student_context(context):
         context.user_data.pop("actions")
     if "activity" in context.user_data:
         context.user_data.pop("activity")
+    if "practic_class" in context.user_data:
+        context.user_data.pop("practic_class")

@@ -924,4 +924,3 @@ teacher_activities_conv = ConversationHandler(
     ],
     allow_reentry=True,
 )
-

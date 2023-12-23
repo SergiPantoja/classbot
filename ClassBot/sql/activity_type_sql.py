@@ -1,7 +1,6 @@
 from sqlalchemy import select
 
 from models.activity_type import Activity_type
-from models.token_type import Token_type
 from sql import session
 import sql.token_type_sql as token_type_sql
 

@@ -3,7 +3,6 @@ import datetime
 from sqlalchemy import select
 
 from models.activity import Activity
-from models.token import Token
 from sql import session
 import sql.token_sql as token_sql
 import sql.activity_type_sql as activity_type_sql

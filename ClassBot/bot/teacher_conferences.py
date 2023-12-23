@@ -340,7 +340,7 @@ async def teacher_conference_back(update: Update, context: ContextTypes):
 
 # Handlers
 teacher_conferences_conv = ConversationHandler(
-    entry_points=[MessageHandler(filters.Regex("^Conferencias del aula$"), teacher_conferences)],
+    entry_points=[MessageHandler(filters.Regex("^🧑‍🏫 Conferencias$"), teacher_conferences)],
     states={
         states.T_CREATE_CONFERENCE: [CallbackQueryHandler(teacher_create_conference, pattern=r"^conference_create$")],
         states.T_CREATE_CONFERENCE_NAME: [MessageHandler(filters.TEXT & ~filters.COMMAND, teacher_create_conference_name)],

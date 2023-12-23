@@ -139,7 +139,7 @@ async def student_conference_back(update: Update, context: ContextTypes):
 
 # Handlers
 student_conferences_conv = ConversationHandler(
-    entry_points=[MessageHandler(filters.Regex("^Conferencias$"), student_conferences)],
+    entry_points=[MessageHandler(filters.Regex("^🧑‍🎓 Conferencias$"), student_conferences)],
     states={
         states.S_SELECT_CONFERENCE: [
             CallbackQueryHandler(student_select_conference, pattern="^(conference#|new_title_proposal)"),
