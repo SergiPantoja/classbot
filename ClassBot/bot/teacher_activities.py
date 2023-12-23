@@ -239,6 +239,7 @@ async def activity_type_selected(update: Update, context: ContextTypes):
                 InlineKeyboardButton("Cambiar descripción" , callback_data="activity_type_change_description"),
                 InlineKeyboardButton("Enviar otro archivo", callback_data="activity_type_change_file"),
                 InlineKeyboardButton("Ocultar actividad", callback_data="activity_type_hide"),
+                InlineKeyboardButton("Participantes", callback_data="activity_type_participants"),
             ]
         
             if activity_type.FileID:
@@ -356,6 +357,47 @@ async def activity_type_hide(update: Update, context: ContextTypes):
         reply_markup=ReplyKeyboardMarkup(keyboards.TEACHER_MAIN_MENU, one_time_keyboard=True, resize_keyboard=True),
     )
     return ConversationHandler.END
+async def activity_type_participants(update: Update, context: ContextTypes):
+    """ Shows students that have tokens of this activity_type """
+    query = update.callback_query
+    await query.answer()
+
+    activity_type_id = context.user_data['activity']['activity_type_id']
+    activity_type = activity_type_sql.get_activity_type(activity_type_id)
+    token_type = token_type_sql.get_token_type(activity_type.token_type_id)
+    classroom_id = teacher_sql.get_teacher(user_sql.get_user_by_chatid(update.effective_user.id).id).active_classroom_id
+
+    # get all students that have tokens of this activity_type
+    students = student_sql.get_students_by_classroom(classroom_id)
+    students = [student for student in students if student_token_sql.exists_of_token_type(student.id, token_type.id)]
+
+    if students:
+        # show students with text pagination
+        lines = [f"{i}. {user_sql.get_user(student.id).fullname}" for i, student in enumerate(students, start=1)]
+        # create paginator using this lines
+        paginator = Paginator(lines=lines, items_per_page=10, text_before=f"Participantes de {token_type.type}:", add_back=True)
+        # add paginator to context
+        context.user_data["paginator"] = paginator
+        # send first page
+        if query.message.caption:
+            await query.edit_message_caption(
+                caption=paginator.text(),
+                reply_markup=paginator.keyboard(),
+                parse_mode="HTML",
+            )
+        else:
+            await query.edit_message_text(
+                text=paginator.text(),
+                reply_markup=paginator.keyboard(),
+                parse_mode="HTML",
+            )
+        return states.T_ACTIVITIES_TYPE_PARTICIPANTS
+    else:
+        await query.message.reply_text(
+            "No hay estudiantes que hayan recibido créditos por este tipo de actividad",
+            reply_markup=ReplyKeyboardMarkup(keyboards.TEACHER_MAIN_MENU, one_time_keyboard=True, resize_keyboard=True),
+        )
+        return ConversationHandler.END
 
 async def create_activity(update: Update, context: ContextTypes):
     """ Starts the flow to create a subactivity, asks for name """
@@ -673,7 +715,50 @@ async def activity_edit_deadline_done(update: Update, context: ContextTypes):
         reply_markup=ReplyKeyboardMarkup(keyboards.TEACHER_MAIN_MENU, one_time_keyboard=True, resize_keyboard=True),
     )
     return ConversationHandler.END
+async def activity_participants(update: Update, context: ContextTypes):
+    """ Show students that have the token of this activity """
+    query = update.callback_query
+    await query.answer()
 
+    activity_id = context.user_data['activity']['activity_id']
+    activity = activity_sql.get_activity(activity_id)
+    token = token_sql.get_token(activity.token_id)
+    activity_type = activity_type_sql.get_activity_type(activity.activity_type_id)
+    token_type = token_type_sql.get_token_type(activity_type.token_type_id)
+    classroom_id = teacher_sql.get_teacher(user_sql.get_user_by_chatid(update.effective_user.id).id).active_classroom_id
+
+    # get all students that have the token of this activity
+    students = student_sql.get_students_by_classroom(classroom_id)
+    students = [student for student in students if student_token_sql.exists(student.id, token.id)]
+
+    if students:
+        # show students with text pagination
+        lines = [f"{i}. {user_sql.get_user(student.id).fullname}" for i, student in enumerate(students, start=1)]
+        # create paginator using this lines
+        paginator = Paginator(lines=lines, items_per_page=10, text_before=f"Participantes de {token.name} de {token_type.type}:", add_back=True)
+        # add paginator to context
+        context.user_data["paginator"] = paginator
+        # send first page
+        if query.message.caption:
+            await query.edit_message_caption(
+                caption=paginator.text(),
+                reply_markup=paginator.keyboard(),
+                parse_mode="HTML",
+            )
+        else:
+            await query.edit_message_text(
+                text=paginator.text(),
+                reply_markup=paginator.keyboard(),
+                parse_mode="HTML",
+            )
+        return states.T_ACTIVITY_PARTICIPANTS
+    else:
+        await query.message.reply_text(
+            "No hay estudiantes que hayan recibido créditos por esta actividad",
+            reply_markup=ReplyKeyboardMarkup(keyboards.TEACHER_MAIN_MENU, one_time_keyboard=True, resize_keyboard=True),
+        )
+        return ConversationHandler.END
+        
 async def review_activity(update: Update, context: ContextTypes):
     """ The teacher can manually add credits to students or guilds, even if the deadline has passed
         Depending on the guild_activity value, the teacher can add credits to a student or a guild,
@@ -881,10 +966,12 @@ teacher_activities_conv = ConversationHandler(
             CallbackQueryHandler(activity_type_edit_description, pattern=r"^activity_type_change_description$"),
             CallbackQueryHandler(activity_type_edit_file, pattern=r"^activity_type_change_file$"),
             CallbackQueryHandler(activity_type_hide, pattern=r"^activity_type_hide$"),
+            CallbackQueryHandler(activity_type_participants, pattern=r"^activity_type_participants$"),
             CallbackQueryHandler(create_activity, pattern=r"^create_activity#"),
         ],
         states.T_ACTIVITIES_TYPE_EDIT_DESCRIPTION: [MessageHandler(filters.TEXT & ~filters.COMMAND, activity_type_edit_description_done)],
         states.T_ACTIVITIES_TYPE_EDIT_FILE: [MessageHandler(filters.Document.ALL | filters.PHOTO, activity_type_edit_file_done)],
+        states.T_ACTIVITIES_TYPE_PARTICIPANTS: [text_paginator_handler],
 
         states.T_ACTIVITY_SEND_NAME: [MessageHandler(filters.TEXT & ~filters.COMMAND, activity_name)],
         states.T_ACTIVITY_SEND_DESCRIPTION: [
@@ -906,11 +993,13 @@ teacher_activities_conv = ConversationHandler(
             CallbackQueryHandler(activity_edit_description, pattern=r"^activity_change_description$"),
             CallbackQueryHandler(activity_edit_file, pattern=r"^activity_change_file$"),
             CallbackQueryHandler(activity_edit_deadline, pattern=r"^activity_change_deadline$"),
+            CallbackQueryHandler(activity_participants, pattern=r"^activity_participants$"),
         ],
         states.T_ACTIVITY_EDIT_NAME: [MessageHandler(filters.TEXT & ~filters.COMMAND, activity_edit_name_done)],
         states.T_ACTIVITY_EDIT_DESCRIPTION: [MessageHandler(filters.TEXT & ~filters.COMMAND, activity_edit_description_done)],
         states.T_ACTIVITY_EDIT_FILE: [MessageHandler(filters.Document.ALL | filters.PHOTO, activity_edit_file_done)],
         states.T_ACTIVITY_EDIT_DEADLINE: [MessageHandler((filters.Regex(r"^\d{2}-\d{2}-\d{4}$") & filters.TEXT) & ~filters.COMMAND, activity_edit_deadline_done)],
+        states.T_ACTIVITY_PARTICIPANTS: [text_paginator_handler],
 
         states.T_ACTIVITY_REVIEW_SELECT_REVIEWED: [
             CallbackQueryHandler(review_activity_select_reviewed, pattern=r"^(student|guild)#"),

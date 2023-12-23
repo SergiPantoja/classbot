@@ -258,6 +258,7 @@ async def practic_class_selected(update: Update, context: ContextTypes):
             InlineKeyboardButton("Cambiar descripción", callback_data="practic_class_change_description"),
             InlineKeyboardButton("Enviar otro archivo", callback_data="practic_class_change_file"),
             InlineKeyboardButton("Eliminar clase práctica", callback_data="practic_class_delete"),
+            InlineKeyboardButton("Participantes", callback_data="practic_class_participants"),
         ]
         if activity_type.FileID:
             try:
@@ -414,6 +415,48 @@ async def practic_class_delete_confirm(update: Update, context: ContextTypes):
         reply_markup=ReplyKeyboardMarkup(keyboards.TEACHER_MAIN_MENU, one_time_keyboard=True, resize_keyboard=True),
     )
     return ConversationHandler.END
+async def practic_class_participants(update: Update, context: ContextTypes):
+    """ Shows students that have a token of this practic class """
+    query = update.callback_query
+    await query.answer()
+
+    practic_class_id = context.user_data["practic_class"]["practic_class_id"]
+    practic_class = practic_class_sql.get_practic_class(practic_class_id)
+    activity_type = activity_type_sql.get_activity_type(practic_class.activity_type_id)
+    token_type = token_type_sql.get_token_type(activity_type.token_type_id)
+    classroom_id = teacher_sql.get_teacher(user_sql.get_user_by_chatid(update.effective_user.id).id).active_classroom_id
+
+    # get all students that have a token of this activity_type
+    students = student_sql.get_students_by_classroom(classroom_id)
+    students = [student for student in students if student_token_sql.exists_of_token_type(student.id, token_type.id)]
+
+    if students:
+        # show students with text pagination
+        lines = [f"{i}. {user_sql.get_user(student.id).fullname}" for i, student in enumerate(students, start=1)]
+        # create paginator using this lines
+        paginator = Paginator(lines=lines, items_per_page=10, text_before=f"Participantes de la clase práctica {token_type.type}:", add_back=True)
+        # add paginator to context
+        context.user_data["paginator"] = paginator
+        # send first page
+        if query.message.caption:
+            await query.edit_message_caption(
+                caption=paginator.text(),
+                reply_markup=paginator.keyboard(),
+                parse_mode="HTML",
+            )
+        else:
+            await query.edit_message_text(
+                text=paginator.text(),
+                reply_markup=paginator.keyboard(),
+                parse_mode="HTML",
+            )
+        return states.T_CP_PARTICIPANTS
+    else:
+        await query.message.reply_text(
+            "No hay estudiantes que hayan recibido créditos por esta clase práctica",
+            reply_markup=ReplyKeyboardMarkup(keyboards.TEACHER_MAIN_MENU, one_time_keyboard=True, resize_keyboard=True),
+        )
+        return ConversationHandler.END
 
 async def create_exercise(update: Update, context: ContextTypes):
     """ Starts the flow to create a practic_class_exercise  
@@ -653,6 +696,49 @@ async def practic_class_exercise_delete_confirm(update: Update, context: Context
         reply_markup=ReplyKeyboardMarkup(keyboards.TEACHER_MAIN_MENU, one_time_keyboard=True, resize_keyboard=True),
     )
     return ConversationHandler.END
+async def practic_class_exercise_participants(update: Update, context: ContextTypes):
+    """ Shows students that have the token of this exercise """
+    query = update.callback_query
+    await query.answer()
+
+    exercise = practic_class_exercises_sql.get_practic_class_exercise(context.user_data["practic_class"]["exercise_id"])
+    activity = activity_sql.get_activity(exercise.activity_id)
+    token = token_sql.get_token(activity.token_id)
+    classroom_id = teacher_sql.get_teacher(user_sql.get_user_by_chatid(update.effective_user.id).id).active_classroom_id
+    activity_type = activity_type_sql.get_activity_type(practic_class_sql.get_practic_class(exercise.practic_class_id).activity_type_id)
+    token_type = token_type_sql.get_token_type(activity_type.token_type_id)
+
+    # get all students that have a token of this activity
+    students = student_sql.get_students_by_classroom(classroom_id)
+    students = [student for student in students if student_token_sql.exists(student.id, token.id)]
+
+    if students:
+        # show students with text pagination
+        lines = [f"{i}. {user_sql.get_user(student.id).fullname}" for i, student in enumerate(students, start=1)]
+        # create paginator using this lines
+        paginator = Paginator(lines=lines, items_per_page=10, text_before=f"Participantes del ejercicio {token.name} de la clase práctica {token_type.type}:", add_back=True)
+        # add paginator to context
+        context.user_data["paginator"] = paginator
+        # send first page
+        if query.message.caption:
+            await query.edit_message_caption(
+                caption=paginator.text(),
+                reply_markup=paginator.keyboard(),
+                parse_mode="HTML",
+            )
+        else:
+            await query.edit_message_text(
+                text=paginator.text(),
+                reply_markup=paginator.keyboard(),
+                parse_mode="HTML",
+            )
+        return states.T_CP_EXERCISE_PARTICIPANTS
+    else:
+        await query.message.reply_text(
+            "No hay estudiantes que hayan recibido créditos por este ejercicio",
+            reply_markup=ReplyKeyboardMarkup(keyboards.TEACHER_MAIN_MENU, one_time_keyboard=True, resize_keyboard=True),
+        )
+        return ConversationHandler.END
 
 async def practic_class_exercise_review(update: Update, context: ContextTypes):
     """ Here teachers manually give credits to students for an exercise of a practic class"""
@@ -926,12 +1012,14 @@ teacher_practic_classes_conv = ConversationHandler(
             CallbackQueryHandler(practic_class_edit_description, pattern=r"^practic_class_change_description$"),
             CallbackQueryHandler(practic_class_edit_file, pattern=r"^practic_class_change_file$"),
             CallbackQueryHandler(practic_class_delete, pattern=r"^practic_class_delete$"),
+            CallbackQueryHandler(practic_class_participants, pattern=r"^practic_class_participants$"),
             CallbackQueryHandler(create_exercise, pattern=r"^create_exercise#"),
         ],
         states.T_CP_EDIT_DATE: [MessageHandler(filters.TEXT & ~filters.COMMAND, practic_class_edit_date_done)],
         states.T_CP_EDIT_DESCRIPTION: [MessageHandler(filters.TEXT & ~filters.COMMAND, practic_class_edit_description_done)],
         states.T_CP_EDIT_FILE: [MessageHandler(filters.Document.ALL | filters.PHOTO, practic_class_edit_file_done)],
         states.T_CP_DELETE: [CallbackQueryHandler(practic_class_delete_confirm, pattern=r"^practic_class_delete_confirm$")],
+        states.T_CP_PARTICIPANTS: [text_paginator_handler],
 
         states.T_CP_CREATE_EXERCISE_NAME: [MessageHandler(filters.TEXT & ~filters.COMMAND, practic_class_exercise_name)],
         states.T_CP_CREATE_EXERCISE_VALUE: [MessageHandler(filters.TEXT & ~filters.COMMAND, practic_class_exercise_value)],
@@ -948,8 +1036,10 @@ teacher_practic_classes_conv = ConversationHandler(
         states.T_CP_EXERCISE_INFO: [
             CallbackQueryHandler(practic_class_exercise_delete, pattern=r"^practic_class_exercise_delete$"),
             CallbackQueryHandler(practic_class_exercise_review, pattern=r"^practic_class_exercise_review$"),
+            CallbackQueryHandler(practic_class_exercise_participants, pattern=r"^practic_class_exercise_participants$"),
         ],
         states.T_CP_EXERCISE_DELETE: [CallbackQueryHandler(practic_class_exercise_delete_confirm, pattern=r"^practic_class_exercise_delete_confirm$")],
+        states.T_CP_EXERCISE_PARTICIPANTS: [text_paginator_handler],
 
         states.T_CP_EXERCISE_REVIEW: [
             CallbackQueryHandler(review_exercise_select_student, pattern=r"^student#"),

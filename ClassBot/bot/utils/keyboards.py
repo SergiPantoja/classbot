@@ -126,6 +126,9 @@ TEACHER_ACTIVITY_TYPE_OPTIONS = [
     ],
     [
         InlineKeyboardButton("Ocultar actividad", callback_data="activity_type_hide"),
+        InlineKeyboardButton("Participantes", callback_data="activity_type_participants"),
+    ],
+    [
         InlineKeyboardButton("Atrás", callback_data="back")
     ]
 ]
@@ -142,6 +145,7 @@ TEACHER_ACTIVITY_OPTIONS =[
         InlineKeyboardButton("Cambiar fecha de entrega", callback_data="activity_change_deadline"),
     ],
     [
+        InlineKeyboardButton("Participantes", callback_data="activity_participants"),
         InlineKeyboardButton("Atrás", callback_data="back"),
     ],
 ]
@@ -155,6 +159,7 @@ TEACHER_PRACTIC_CLASS_OPTIONS = [
         InlineKeyboardButton("Eliminar clase práctica", callback_data="practic_class_delete"),
     ],
     [
+        InlineKeyboardButton("Participantes", callback_data="practic_class_participants"),
         InlineKeyboardButton("Atrás", callback_data="back"),
     ],
 ]
@@ -164,6 +169,7 @@ TEACHER_PRACTIC_CLASS_EXERCISE_OPTIONS = [
         InlineKeyboardButton("Eliminar ejercicio", callback_data="practic_class_exercise_delete"),
     ],
     [
+        InlineKeyboardButton("Participantes", callback_data="practic_class_exercise_participants"),
         InlineKeyboardButton("Atrás", callback_data="back"),
     ],
 ]

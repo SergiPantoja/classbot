@@ -25,7 +25,12 @@ def exists(student_id: int, token_id: int) -> bool:
     """ Returns True if the student_token exists. """
     with session() as s:
         return s.query(Student_token).filter(Student_token.student_id == student_id).filter(Student_token.token_id == token_id).first() is not None
-    
+
+def exists_of_token_type(student_id: int, token_type_id: int) -> bool:
+    """ Returns True if the student has at least one token of the given token_type. """
+    with session() as s:
+        return s.query(Student_token).filter(Student_token.student_id == student_id).join(Token).filter(Token.token_type_id == token_type_id).first() is not None
+
 def get_tokens_by_student_and_classroom(student_id: int, classroom_id: int) -> list[Token]:
     """ Returns a list of tokens for the given student and classroom. """
     with session() as s:
