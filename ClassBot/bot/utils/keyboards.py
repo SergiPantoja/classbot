@@ -7,7 +7,7 @@ SELECT_ROLE = [["Estudiante", "Profesor"]]
 TEACHER_LOGIN = [["Ingresar al aula", "Crear"]]
 TEACHER_CREATE = [["Crear curso", "Crear aula"]]
 
-TEACHER_MAIN_MENU = [["🧑‍🏫 Conferencias", "Opciones"], ["Pendientes", "Gremios"], ["Actividades 📖", "📔 Clases Prácticas"], ["Atrás"]]
+TEACHER_MAIN_MENU = [["🧑‍🏫 Conferencias", "Opciones"], ["Pendientes", "Gremios"], ["Actividades 📖", "📔 Clases Prácticas"], ["🏫 Aula", "Atrás"]]
 TEACHER_SETTINGS = [["Editar curso", "Editar aula"], ["Atrás", "Salir"]]
 TEACHER_EDIT_COURSE = [
     [
@@ -167,8 +167,18 @@ TEACHER_PRACTIC_CLASS_EXERCISE_OPTIONS = [
         InlineKeyboardButton("Atrás", callback_data="back"),
     ],
 ]
+TEACHER_CLASSROOM = [
+    [
+        InlineKeyboardButton("Enviar mensaje", callback_data="classroom_send_message"),
+    ],
+    [
+        InlineKeyboardButton("Estudiantes", callback_data="classroom_students"),
+        InlineKeyboardButton("Gremios", callback_data="classroom_guilds"),
+    ],
+    [InlineKeyboardButton("Atrás", callback_data="back")], 
+]
 
-STUDENT_MAIN_MENU = [["🧑‍🎓 Conferencias", "Inventario"], ["Acciones", "Gremio"], ["Opciones", "Actividades 📝"], ["📓 Clases Prácticas", "Atrás"]]
+STUDENT_MAIN_MENU = [["🧑‍🎓 Conferencias", "Inventario"], ["Acciones", "Gremio"], ["Actividades 📝", "📓 Clases Prácticas"], ["Atrás"]]
 STUDENT_INVENTORY = [["Medallas", "Atrás"]]
 STUDENT_CONFERENCE_SELECTED = [
     [
