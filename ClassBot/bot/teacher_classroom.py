@@ -119,6 +119,97 @@ async def send_message_done(update: Update, context: ContextTypes):
 
     return ConversationHandler.END
 
+async def classroom_students(update: Update, context: ContextTypes):
+    """ Shows all students of the classroom ordered by amount of credits.
+    Supports pagination. Each line shows the amount of credits, the student
+    name and has a command in the form '/student_id' to see the student's
+    credits history. """
+    query = update.callback_query
+    await query.answer()
+
+    # get active classroom from db
+    teacher = teacher_sql.get_teacher(user_sql.get_user_by_chatid(update.effective_user.id).id)
+    classroom = classroom_sql.get_classroom(teacher.active_classroom_id)
+    classroom_id = classroom.id
+    students = student_sql.get_students_by_classroom(classroom.id)
+
+    # sort students by total credits
+    students.sort(key=lambda student: student_token_sql.get_total_value_by_classroom(student.id, classroom_id), reverse=True)
+    # create lines for paginator 
+    lines = [f"{i}. {str(student_token_sql.get_total_value_by_classroom(student.id, classroom_id)).ljust(10)} ➡️ {user_sql.get_user(student.id).fullname} /student_{student.id}" for i, student in enumerate(students, start=1)]
+    # create new paginator using this lines
+    paginator = Paginator(
+        lines=lines, 
+        items_per_page=10, 
+        text_before=f"Estudiantes de {classroom.name} ordenados por créditos:", 
+        text_after="Selecciona un estudiante para ver su historial de créditos",
+        add_back=True,
+        )
+    # save paginator in context
+    context.user_data["paginator"] = paginator
+    # send first page
+    await query.edit_message_text(
+        paginator.text(),
+        reply_markup=paginator.keyboard(),
+        parse_mode="HTML",
+    )
+    return states.T_CLASSROOM_STUDENT_INFO
+
+async def classroom_guilds(update: Update, context: ContextTypes):
+    """ Shows all guilds of the classroom ordered by amount of credits.
+    Supports pagination. Each line shows the amount of credits, the guild
+    name and has a command in the form '/guild_id' to see the guild's
+    students and credits history. """
+    pass
+
+async def student_info(update: Update, context: ContextTypes):
+    """ Shows the student's credits history per day from the most recent.
+    Supports pagination. Each line has the date - the amount of credits, 
+    the token name and the token_type type if it its related activity_type
+    has single_submission set to True. """
+    student_id = int(update.message.text.split("_")[1])
+    # get student from db
+    student = student_sql.get_student(student_id)
+    # get active classroom from db
+    teacher = teacher_sql.get_teacher(user_sql.get_user_by_chatid(update.effective_user.id).id)
+    classroom = classroom_sql.get_classroom(teacher.active_classroom_id)
+    classroom_id = classroom.id
+    # get student's tokens from db
+    student_tokens = student_token_sql.get_student_token_by_student_and_classroom(student_id, classroom_id) # already sorted
+    # create lines for paginator
+    lines = []
+    i = 1
+    for student_token in student_tokens:
+        token = token_sql.get_token(student_token.token_id)
+        token_type = token_type_sql.get_token_type(token.token_type_id)
+        # if not default token_type (default token_types havee classroom_id = None and no activity_type_id)
+        if token_type.classroom_id:
+            activity_type = activity_type_sql.get_activity_type_by_token_type_id(token_type.id)
+            if activity_type.single_submission:
+                lines.append(f"{i}. {student_token.creation_date.strftime('%d/%m/%Y')} - {str(student_token.value).ljust(10)} ➡️ <b>{token.name}</b> de <i>{token_type.type}</i>")
+            else:
+                lines.append(f"{student_token.creation_date.strftime('%d/%m/%Y')} - {str(student_token.value).ljust(10)} ➡️ <b>{token.name}</b>")
+        else:
+            lines.append(f"{i}. {student_token.creation_date.strftime('%d/%m/%Y')} - {str(student_token.value).ljust(10)} ➡️ <b>{token.name}</b>")
+        i += 1
+    # create new paginator using this lines
+    paginator = Paginator(
+        lines=lines, 
+        items_per_page=10, 
+        text_before=f"Historial de créditos de {user_sql.get_user(student.id).fullname}:", 
+        text_after="",
+        add_back=True,
+        )
+    # save paginator in context
+    context.user_data["paginator"] = paginator
+    # send first page
+    await update.message.reply_text(
+        paginator.text(),
+        reply_markup=paginator.keyboard(),
+        parse_mode="HTML",
+    )
+    return states.T_CLASSROOM_STUDENT_INFO
+
 
 async def teacher_classroom_back(update: Update, context: ContextTypes):
     """ Go back to teacher main menu """
@@ -149,9 +240,16 @@ teacher_classroom_conv = ConversationHandler(
     entry_points=[MessageHandler(filters.Regex(r"^🏫 Aula$"), teacher_classroom)],
     states={
         states.T_CLASSROOM_OPTION:[
-            CallbackQueryHandler(send_message, pattern=r"^classroom_send_message$")
+            text_paginator_handler,
+            CallbackQueryHandler(send_message, pattern=r"^classroom_send_message$"),
+            CallbackQueryHandler(classroom_students, pattern=r"^classroom_students$"),
+            CallbackQueryHandler(classroom_guilds, pattern=r"^classroom_guilds$"),
         ],
         states.T_CLASSROOM_SEND_MESSAGE:[MessageHandler(filters.TEXT | filters.Document.ALL | filters.PHOTO, send_message_done)],
+        states.T_CLASSROOM_STUDENT_INFO:[
+            MessageHandler(filters.TEXT & filters.Regex(r"^/student_\d+$"), student_info),
+            text_paginator_handler,
+        ],
     },
     fallbacks=[
         CallbackQueryHandler(teacher_classroom_back, pattern="back"),

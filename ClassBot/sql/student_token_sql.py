@@ -42,6 +42,12 @@ def get_total_value_by_classroom(student_id: int, classroom_id: int) -> int:
     with session() as s:
         return sum([student_token.value for student_token in s.query(Student_token).filter(Student_token.student_id == student_id).join(Token).filter(Token.classroom_id == classroom_id).all()])
 
+def get_student_token_by_student_and_classroom(student_id: int, classroom_id: int) -> list[Student_token]:
+    """ Returns a list of student_tokens for the given student and classroom. 
+    sorted by date of creation from recent to old."""
+    with session() as s:
+        return s.query(Student_token).filter(Student_token.student_id == student_id).join(Token).filter(Token.classroom_id == classroom_id).order_by(Student_token.creation_date.desc()).all()
+
 def remove_token(student_id: int, token_id: int) -> None:
     """ Removes the token from the student. """
     with session() as s:

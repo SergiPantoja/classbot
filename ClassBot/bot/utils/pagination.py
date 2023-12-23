@@ -68,6 +68,6 @@ async def update(update: Update, context: ContextTypes) -> None:
     paginator.page = int(query.data.split("#")[1])
 
     keyboard = paginator.keyboard()
-    await query.edit_message_text(paginator.text(), reply_markup=keyboard)
+    await query.edit_message_text(paginator.text(), reply_markup=keyboard, parse_mode="HTML")
 
 text_paginator_handler = CallbackQueryHandler(update, pattern=r"^page#")
