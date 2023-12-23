@@ -40,10 +40,21 @@ def exists(guild_id: int, token_id: int) -> bool:
         return s.query(Guild_token).filter(Guild_token.guild_id == guild_id).filter(Guild_token.token_id == token_id).first() is not None
     
 def get_tokens_by_guild_and_classroom(guild_id: int, classroom_id: int) -> list[Token]:
-    """ Returns a list of tokens for the given guild and course. """
+    """ Returns a list of tokens for the given guild and classroom. """
     with session() as s:
         return s.query(Token).join(Guild_token).filter(Guild_token.guild_id == guild_id).filter(Token.classroom_id == classroom_id).all()
 
+def get_guild_tokens_by_guild_and_classroom(guild_id: int, classroom_id: int) -> list[Guild_token]:
+    """ Returns a list of guild_tokens for the given guild and classroom.
+    sorted by date of creation from recent to old."""
+    with session() as s:
+        return s.query(Guild_token).filter(Guild_token.guild_id == guild_id).join(Token).filter(Token.classroom_id == classroom_id).order_by(Guild_token.creation_date.desc()).all()
+
+def get_total_value_by_classroom(guild_id: int, classroom_id: int) -> int:
+    """ Returns the total value of the guild_token rows where the classroom_id
+    of the token with the token_id in guild_token is the given classroom_id. """
+    with session() as s:
+        return sum([guild_token.value for guild_token in s.query(Guild_token).filter(Guild_token.guild_id == guild_id).join(Token).filter(Token.classroom_id == classroom_id).all()])
 
 def remove_token(guild_id: int, token_id: int) -> None:
     """ Removes the token from the guild. """
