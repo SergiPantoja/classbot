@@ -318,6 +318,9 @@ async def activity_send_submission(update: Update, context: ContextTypes):
 async def activity_send_submission_done(update: Update, context: ContextTypes):
     """ Creates a pending of token_type of the activity_type and with the token_id
      of the activity. """
+    query = update.callback_query
+    if query:
+        await query.answer()
     
     student = student_sql.get_student(user_sql.get_user_by_chatid(update.effective_user.id).id)
     classroom_id = student.active_classroom_id
@@ -329,27 +332,50 @@ async def activity_send_submission_done(update: Update, context: ContextTypes):
     activity_type = activity_type_sql.get_activity_type(activity.activity_type_id)
     token_type = token_type_sql.get_token_type(activity_type.token_type_id)
 
-    # get file id if exists
-    file = update.message.document or update.message.photo
-    fid = None
-    if file:
-        if update.message.document:
-            fid = file.file_id
+    if not query:
+        # get file id if exists
+        file = update.message.document or update.message.photo
+        fid = None
+        if file:
+            if update.message.document:
+                fid = file.file_id
+            else:
+                fid = file[-1].file_id
+        context.user_data['activity']['FileID'] = fid
+        text = f"{user_sql.get_user(student.id).fullname} ha enviado una entrega para la actividad {token.name} de {token_type.type}:\n" + f"{'Gremio: ' + guild.name if guild else ''}\n" + f"{update.message.text if update.message.text else ''}" + f"{update.message.caption if update.message.caption else ''}"
+        context.user_data['activity']['text'] = text
+
+    # check if a pending with this token already exists
+    pending = pending_sql.get_pending_of_student_by_token(student.id, classroom_id, token.id)
+    if pending:
+        # notify the student a submission already exists and ask if he wants to update it
+        # (will delete the old pending and return to this state)
+        if query: # delete pending
+            pending_sql.delete_pending(pending.id)
+            logger.info(f"Pending {pending.id} deleted")
         else:
-            fid = file[-1].file_id
-    
-    text = f"{user_sql.get_user(student.id).fullname} ha enviado una entrega para la actividad {token.name} de {token_type.type}:\n" + f"{'Gremio: ' + guild.name if guild else ''}\n" + f"{update.message.text if update.message.text else ''}" + f"{update.message.caption if update.message.caption else ''}"
+            await update.message.reply_text(
+                "Ya has enviado una entrega para esta actividad. ¿Deseas actualizarla?",
+                reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Sí", callback_data="delete_pending")], [InlineKeyboardButton("No", callback_data="back")]]),
+            )
+            return states.S_ACTIVITY_SEND_SUBMISSION_DONE
     
     # Create pending in DB
-    pending_sql.add_pending(student_id=student.id, classroom_id=classroom_id, token_type_id=token_type.id, token_id=token.id, guild_id=guild_id, text=text, FileID=fid)
+    pending_sql.add_pending(student_id=student.id, classroom_id=classroom_id, token_type_id=token_type.id, token_id=token.id, guild_id=guild_id, text=context.user_data['activity']['text'], FileID=context.user_data['activity']['FileID'])
     logger.info(f"New activity f{token.name} of f{token_type.type} pending created by student {user_sql.get_user(student.id).fullname}")
     #TODO: Send notification to notification channel of the classroom if it exists
 
     # notify student
-    await update.message.reply_text(
-        "Enviado!",
-        reply_markup=ReplyKeyboardMarkup(keyboards.STUDENT_MAIN_MENU, one_time_keyboard=True, resize_keyboard=True)
-    )
+    if query:
+        await query.message.reply_text(
+            "Enviado!",
+            reply_markup=ReplyKeyboardMarkup(keyboards.STUDENT_MAIN_MENU, one_time_keyboard=True, resize_keyboard=True)
+        )
+    else:
+        await update.message.reply_text(
+            "Enviado!",
+            reply_markup=ReplyKeyboardMarkup(keyboards.STUDENT_MAIN_MENU, one_time_keyboard=True, resize_keyboard=True)
+        )
     return ConversationHandler.END
 
 async def student_activities_back(update: Update, context: ContextTypes):
@@ -396,7 +422,8 @@ student_activities_conv = ConversationHandler(
             CallbackQueryHandler(activity_send_submission, pattern=r"^send_submission$"),
         ],
         states.S_ACTIVITY_SEND_SUBMISSION_DONE: [
-            MessageHandler(filters.TEXT | filters.PHOTO | filters.Document.ALL, activity_send_submission_done)
+            MessageHandler(filters.TEXT | filters.PHOTO | filters.Document.ALL, activity_send_submission_done),
+            CallbackQueryHandler(activity_send_submission_done, pattern=r"^delete_pending$"),
         ],
     },
     fallbacks=[
