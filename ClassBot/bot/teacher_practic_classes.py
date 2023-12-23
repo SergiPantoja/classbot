@@ -581,7 +581,48 @@ async def practic_class_exercise_partial_credits(update: Update, context: Contex
     return states.T_CP_INFO
 
 async def exercise_selected(update: Update, context: ContextTypes):
+    """ Shows the details of the selected practic class exercise.
+        Doesnt allow edition for now.
+        Show options for deleting it or manually reviewing it.
+    """
+    query = update.callback_query
+    await query.answer()
+
+    exercise_id = int(query.data.split("#")[1])
+    # save exercise id in context
+    context.user_data["practic_class"]["exercise_id"] = exercise_id
+
+    exercise = practic_class_exercises_sql.get_practic_class_exercise(exercise_id)
+    activity = activity_sql.get_activity(exercise.activity_id)
+    token = token_sql.get_token(activity.token_id)
+    practic_class = practic_class_sql.get_practic_class(exercise.practic_class_id)
+    activity_type = activity_type_sql.get_activity_type(practic_class.activity_type_id)
+    token_type = token_type_sql.get_token_type(activity_type.token_type_id)
+
+    text = f"Ejercicio: <b>{token.name}</b> de la clase práctica <b>{token_type.type}</b>\n"
+    text += f"Valor: <b>{exercise.value}</b>\n"
+    if token.description:
+        text += f"Descripción: <b>{token.description}</b>\n"
+    
+    if activity.FileID:
+        try:
+            try:
+                await query.message.reply_photo(activity.FileID, caption=text, parse_mode="HTML", reply_markup=InlineKeyboardMarkup(keyboards.TEACHER_PRACTIC_CLASS_EXERCISE_OPTIONS))
+            except BadRequest:
+                await query.message.reply_document(activity.FileID, caption=text, parse_mode="HTML", reply_markup=InlineKeyboardMarkup(keyboards.TEACHER_PRACTIC_CLASS_EXERCISE_OPTIONS))
+        except BadRequest:
+            await query.edit_message_text("Se ha producido un error al enviar el archivo. Puede intentar editar el ejercicio para enviar otro archivo.\n\n" + text, parse_mode="HTML", reply_markup=InlineKeyboardMarkup(keyboards.TEACHER_PRACTIC_CLASS_EXERCISE_OPTIONS))
+    else:
+        if query.message.caption:
+            await query.message.reply_text(text, parse_mode="HTML", reply_markup=InlineKeyboardMarkup(keyboards.TEACHER_PRACTIC_CLASS_EXERCISE_OPTIONS))
+        else:
+            await query.edit_message_text(text, parse_mode="HTML", reply_markup=InlineKeyboardMarkup(keyboards.TEACHER_PRACTIC_CLASS_EXERCISE_OPTIONS))
+    return states.T_CP_EXERCISE_INFO
+async def practic_class_exercise_delete(update: Update, context: ContextTypes):
     pass
+async def practic_class_exercise_review(update: Update, context: ContextTypes):
+    pass
+    
 
 async def teacher_practic_classes_back(update: Update, context: ContextTypes):
     """ Go back to teacher main menu """
@@ -654,6 +695,10 @@ teacher_practic_classes_conv = ConversationHandler(
             ],
         states.T_CP_CREATE_EXERCISE_PARTIAL_CREDITS: [CallbackQueryHandler(practic_class_exercise_partial_credits, pattern=r"^(yes|no$)")],
         
+        states.T_CP_EXERCISE_INFO: [
+            CallbackQueryHandler(practic_class_exercise_delete, pattern=r"^practic_class_exercise_delete$"),
+            CallbackQueryHandler(practic_class_exercise_review, pattern=r"^practic_class_exercise_review$"),
+        ],
     },
     fallbacks=[
         CallbackQueryHandler(teacher_practic_classes_back, pattern="back"),

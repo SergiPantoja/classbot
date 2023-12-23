@@ -155,6 +155,15 @@ TEACHER_PRACTIC_CLASS_OPTIONS = [
         InlineKeyboardButton("Atrás", callback_data="back"),
     ],
 ]
+TEACHER_PRACTIC_CLASS_EXERCISE_OPTIONS = [
+    [
+        InlineKeyboardButton("Revisar ejercicio", callback_data="practic_class_exercise_review"),
+        InlineKeyboardButton("Eliminar ejercicio", callback_data="practic_class_exercise_delete"),
+    ],
+    [
+        InlineKeyboardButton("Atrás", callback_data="back"),
+    ],
+]
 
 STUDENT_MAIN_MENU = [["🧑‍🎓 Conferencias", "Inventario"], ["Acciones", "Gremio"], ["Opciones", "Actividades 📝"], ["📓 Clases Prácticas", "Atrás"]]
 STUDENT_INVENTORY = [["Medallas", "Atrás"]]
