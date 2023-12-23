@@ -48,7 +48,7 @@ async def student_practic_classes(update: Update, context: ContextTypes):
 
     if practic_classes:
         # show practic classes with pagination
-        buttons = [InlineKeyboardButton(f"{i}. {token_type_sql.get_token_type(activity_type_sql.get_activity_type(practic_class.activity_type_id).token_type_id).type}", callback_data=f"practic_class#{practic_class.id}") for i, practic_class in enumerate(practic_classes, start=1)]
+        buttons = [InlineKeyboardButton(f"{i}. {token_type_sql.get_token_type(activity_type_sql.get_activity_type(practic_class.activity_type_id).token_type_id).type} - {datetime.date(practic_class.date.year, practic_class.date.month, practic_class.date.day)}", callback_data=f"practic_class#{practic_class.id}") for i, practic_class in enumerate(practic_classes, start=1)]
         await update.message.reply_text(
             "Clases prácticas:",
             reply_markup=paginated_keyboard(buttons, context=context, add_back=True),
