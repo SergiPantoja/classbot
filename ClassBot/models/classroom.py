@@ -24,6 +24,7 @@ class Classroom(Base):
     name: Mapped[str]
     teacher_auth: Mapped[str] = mapped_column(unique=True)  
     student_auth: Mapped[str] = mapped_column(unique=True)
+    teacher_notification_channel: Mapped[Optional[str]]
 
     # Many-to-one relationship with course
     course: Mapped["Course"] = relationship(back_populates='classrooms')

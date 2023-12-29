@@ -29,6 +29,10 @@ def get_classrooms_by_course(course_id: int) -> list[Classroom]:
     with session() as s:
         return s.query(Classroom).filter(Classroom.course_id == course_id).all()
 
+def get_teacher_notification_channel_chat_id(classroom_id: int) -> str:
+    """ Returns the chat_id of the teacher_notification_channel of the given classroom. """
+    with session() as s:
+        return s.query(Classroom).filter(Classroom.id == classroom_id).first().teacher_notification_channel
 
 def add_classroom(course_id: int, name: str, teacher_auth: str, student_auth: str) -> None:
     """ Adds a new classroom to the database. """
@@ -50,6 +54,12 @@ def update_classroom_password(classroom_id: int, password: str, password_type: s
         raise ValueError("Invalid password_type")
     with session() as s:
         s.query(Classroom).filter(Classroom.id == classroom_id).update({password_type: password})
+        s.commit()
+
+def update_classroom_teacher_notifications_channel(classroom_id: int, teacher_notifications_channel: str):
+    """ Updates the classroom teacher_notifications_channel """
+    with session() as s:
+        s.query(Classroom).filter(Classroom.id == classroom_id).update({"teacher_notification_channel": teacher_notifications_channel})
         s.commit()
 
 def delete_classroom(classroom_id: int) -> None:

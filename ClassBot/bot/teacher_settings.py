@@ -489,6 +489,14 @@ async def edit_classroom_choose_option(update: Update, context: ContextTypes):
             )
             return states.EDIT_CLASSROOM_CHOOSE_OPTION
 
+    elif option == "option_classroom_channels":
+        # Show buttons to see details of each channel
+        await query.edit_message_text(
+            "Elija una opción:",
+            reply_markup=InlineKeyboardMarkup(keyboards.TEACHER_EDIT_CLASSROOM_CHANNELS),
+        )
+        return states.EDIT_CLASSROOM_CHANNELS
+
     elif option == "option_edit_classroom_back":
         # back to settings menu
         await query.message.reply_text(
@@ -656,6 +664,96 @@ async def edit_classroom_delete(update: Update, context: ContextTypes):
         )
         return states.EDIT_CLASSROOM_CHOOSE_OPTION
 
+async def edit_classroom_channels(update: Update, context: ContextTypes):
+    """ Shows details of the selected channel if it has been set, otherwise
+    allows to set it. Option to change channel."""
+    query = update.callback_query
+    query.answer()
+
+    # get classroom id
+    teacher = teacher_sql.get_teacher(user_sql.get_user_by_chatid(update.callback_query.message.chat_id).id)
+    classroom_id = teacher.active_classroom_id
+
+    option = query.data
+    if option.split(":")[1] == "notifications":
+        # get classroom id
+        teacher = teacher_sql.get_teacher(user_sql.get_user_by_chatid(update.callback_query.message.chat_id).id)
+        classroom_id = teacher.active_classroom_id
+        # get notification channel
+        channel = classroom_sql.get_teacher_notification_channel_chat_id(classroom_id)
+        if channel:
+            # show channel details (channel name and link/@username if exists)
+            chat = await context.bot.getChat(channel)
+            if chat:
+                await query.edit_message_text(
+                    f"Canal de notificaciones:\n"
+                    f"Nombre: {chat.title}\n"
+                    f"Link: {chat.invite_link}\n"
+                    f"Username: @{chat.username}\n\n",
+                    reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔄 Cambiar", callback_data="option_classroom_channels:add_notifications")], [InlineKeyboardButton("🔙", callback_data="option_edit_classroom_back")]]),
+                )
+            else:
+                # ask to set channel
+                await query.edit_message_text(
+                    "No existe un canal de notificaciones.\nPuede crear uno si lo desea.",
+                    reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("➕ Añadir", callback_data="option_classroom_channels:add_notifications")], [InlineKeyboardButton("🔙", callback_data="option_edit_classroom_back")]]),
+                )
+            return states.EDIT_CLASSROOM_CHANNELS
+        else:
+            # ask to set channel
+            await query.edit_message_text(
+                "No existe un canal de notificaciones.\nPuede crear uno si lo desea.",
+                reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("➕ Añadir", callback_data="option_classroom_channels:add_notifications")], [InlineKeyboardButton("🔙", callback_data="option_edit_classroom_back")]]),
+            )
+            return states.EDIT_CLASSROOM_CHANNELS
+    
+    elif option.split(":")[1] == "add_notifications":
+        # ask to add channel
+        context.user_data['edit_classroom']['channel_type'] = "notifications"
+        text = f"Envíe el chat id del canal de notificaciones.\n\n <b>1</b> - Agrega el bot al canal como administrador (otórgale todos los permisos).\n <b>2</b> - Usa el comando <b>/chat_id</b> para obtener el id del canal.\n <b>3</b> - Envía el mensaje que envió el bot con el id del canal."
+        await query.edit_message_text(
+            text,
+            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔙", callback_data="option_edit_classroom_back")]]),
+            parse_mode="HTML",
+        )
+        return states.EDIT_CLASSROOM_CHANNELS_ADD
+
+async def edit_classroom_channels_add(update: Update, context: ContextTypes):
+    """ Adds the channel to the classroom """
+    message = update.message
+    # get channel id
+    try:
+        channel_id = update.message.text.split(":")[1]
+    except IndexError:
+        await message.reply_text(
+            "No se pudo obtener el id del canal.\n"
+            "Por favor, siga las instrucciones.",
+            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔙", callback_data="option_edit_classroom_back")]]),
+        )
+        return states.EDIT_CLASSROOM_CHANNELS_ADD
+    # try to get chat
+    chat = context.bot.getChat(channel_id)
+    if not chat:
+        await message.reply_text(
+            "No se pudo obtener el canal.\n"
+            "Por favor, siga las instrucciones.",
+            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔙", callback_data="option_edit_classroom_back")]]),
+        )
+        return states.EDIT_CLASSROOM_CHANNELS_ADD
+    # get classroom id
+    teacher = teacher_sql.get_teacher(user_sql.get_user_by_chatid(update.message.chat_id).id)
+    classroom_id = teacher.active_classroom_id
+    course = course_sql.get_course(classroom_sql.get_classroom(classroom_id).course_id)
+    # add channel to classroom
+    classroom_sql.update_classroom_teacher_notifications_channel(classroom_id, channel_id)
+    # notif
+    keyboard = keyboards.TEACHER_EDIT_CLASSROOM_OWNER if teacher.id == course.teacher_id else keyboards.TEACHER_EDIT_CLASSROOM
+    await message.reply_text(
+        "Canal de notificaciones agregado",
+        reply_markup=InlineKeyboardMarkup(keyboard),
+    )
+    return states.EDIT_CLASSROOM_CHOOSE_OPTION
+
 async def edit_classroom_back(update: Update, context: ContextTypes):
     """Returns to settings menu"""
     query = update.callback_query
@@ -715,6 +813,8 @@ edit_classroom_conv = ConversationHandler(
             paginator_handler
             ],
         states.EDIT_CLASSROOM_DELETE_CONFIRM: [CallbackQueryHandler(edit_classroom_delete, pattern=r"^delete_classroom_confirm")],
+        states.EDIT_CLASSROOM_CHANNELS: [CallbackQueryHandler(edit_classroom_channels, pattern=r"^option_classroom_channels")],
+        states.EDIT_CLASSROOM_CHANNELS_ADD: [MessageHandler(filters.TEXT & ~filters.COMMAND, edit_classroom_channels_add)]
     },
     fallbacks=[
         MessageHandler(filters.Regex("^🔙$"), back_to_teacher_menu),

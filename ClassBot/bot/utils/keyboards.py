@@ -34,7 +34,10 @@ TEACHER_EDIT_CLASSROOM = [
         InlineKeyboardButton("Cambiar de aula", callback_data="option_change_classroom"),
         InlineKeyboardButton("➖ Eliminar estudiantes", callback_data="option_remove_students"),
     ],
-    [InlineKeyboardButton("🔙", callback_data="option_edit_classroom_back")],
+    [
+        InlineKeyboardButton("Canales del aula", callback_data="option_classroom_channels"),
+        InlineKeyboardButton("🔙", callback_data="option_edit_classroom_back")
+    ],
 ]
 TEACHER_EDIT_CLASSROOM_OWNER = [
     [
@@ -49,7 +52,16 @@ TEACHER_EDIT_CLASSROOM_OWNER = [
         InlineKeyboardButton("➖ Eliminar profesores", callback_data="option_remove_teachers"),
         InlineKeyboardButton("➖ Eliminar aula", callback_data="option_delete_classroom"),
     ],
-    [InlineKeyboardButton("🔙", callback_data="option_edit_classroom_back")],
+    [
+        InlineKeyboardButton("Canales del aula", callback_data="option_classroom_channels"),
+        InlineKeyboardButton("🔙", callback_data="option_edit_classroom_back")
+    ],
+]
+TEACHER_EDIT_CLASSROOM_CHANNELS = [
+    [
+        InlineKeyboardButton("Notificaciones", callback_data="option_classroom_channels:notifications"),
+        InlineKeyboardButton("🔙", callback_data="option_edit_classroom_back")
+    ],
 ]
 TEACHER_CONFERENCE_CREATE = [
     [
