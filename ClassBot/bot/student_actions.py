@@ -160,7 +160,16 @@ async def send_misc(update: Update, context: ContextTypes):
     # create pending in database
     pending_sql.add_pending(student.id, classroom_id, token_type_id, text=text, FileID=fid)
     logger.info(f"New misc by {user.fullname}.")
-    #TODO send notification to notification channel of the classroom if it exists
+    # send notification to notification channel of the classroom if it exists
+    chan = classroom_sql.get_teacher_notification_channel_chat_id(classroom_id)
+    if chan:
+        try:
+            await context.bot.send_message(
+                chan,
+                f"El estudiante {user.fullname} ha propuesto una miscelánea",
+            )
+        except BadRequest:
+            logger.exception(f"Failed to send message to notification channel {chan}.")
     
     # notify student that the proposal was sent
     await update.message.reply_text(
@@ -247,7 +256,16 @@ async def send_intervention(update: Update, context: ContextTypes):
     # create pending in database
     pending_sql.add_pending(student.id, classroom_id, token_type_id, text=text)
     logger.info(f"New intervention by {user.fullname}.")
-    #TODO send notification to notification channel of the classroom if it exists
+    # send notification to notification channel of the classroom if it exists
+    chan = classroom_sql.get_teacher_notification_channel_chat_id(classroom_id)
+    if chan:
+        try:
+            await context.bot.send_message(
+                chan,
+                f"El estudiante {user.fullname} ha intervenido en una clase",
+            )
+        except BadRequest:
+            logger.exception(f"Failed to send message to notification channel {chan}.")
 
     # notify student that the proposal was sent
     await update.message.reply_text(
@@ -284,8 +302,7 @@ async def send_rectification(update: Update, context: ContextTypes):
 
         # create pending in database
         pending_sql.add_pending(student.id, classroom_id, token_type_id, teacher_id=teacher_id, text=text)
-        logger.info(f"New rectification by {user.fullname}.")
-        #TODO send notification to notification channel of the classroom if it exists
+        logger.info(f"New rectification by {user.fullname}.") 
 
         # notify this teacher that he has a new rectification in his direct pendings
         teacher_chat_id = user_sql.get_user(teacher_id).telegram_chatid
@@ -319,7 +336,16 @@ async def send_status_phrase(update: Update, context: ContextTypes):
     # create pending in database
     pending_sql.add_pending(student.id, classroom_id, token_type_id, text=text)
     logger.info(f"New status phrase by {user.fullname}.")
-    #TODO send notification to notification channel of the classroom if it exists
+    # send notification to notification channel of the classroom if it exists
+    chan = classroom_sql.get_teacher_notification_channel_chat_id(classroom_id)
+    if chan:
+        try:
+            await context.bot.send_message(
+                chan,
+                f"El estudiante {user.fullname} ha cambiado su frase de estado",
+            )
+        except BadRequest:
+            logger.exception(f"Failed to send message to notification channel {chan}.")
 
     # notify student that the proposal was sent
     await update.message.reply_text(
@@ -350,7 +376,16 @@ async def send_meme(update: Update, context: ContextTypes):
     # create pending in database
     pending_sql.add_pending(student.id, classroom_id, token_type_id, text=text, FileID=file[-1].file_id)
     logger.info(f"New meme by {user.fullname}.")
-    #TODO send notification to notification channel of the classroom if it exists
+    # send notification to notification channel of the classroom if it exists
+    chan = classroom_sql.get_teacher_notification_channel_chat_id(classroom_id)
+    if chan:
+        try:
+            await context.bot.send_message(
+                chan,
+                f"El estudiante {user.fullname} ha enviado un meme",
+            )
+        except BadRequest:
+            logger.exception(f"Failed to send message to notification channel {chan}.")
 
     # notify student that the proposal was sent
     await update.message.reply_text(
@@ -372,7 +407,16 @@ async def send_joke(update: Update, context: ContextTypes):
     # create pending in database
     pending_sql.add_pending(student.id, classroom_id, token_type_id, text=text)
     logger.info(f"New joke by {user.fullname}.")
-    #TODO send notification to notification channel of the classroom if it exists
+    # send notification to notification channel of the classroom if it exists
+    chan = classroom_sql.get_teacher_notification_channel_chat_id(classroom_id)
+    if chan:
+        try:
+            await context.bot.send_message(
+                chan,
+                f"El estudiante {user.fullname} ha enviado un chiste",
+            )
+        except BadRequest:
+            logger.exception(f"Failed to send message to notification channel {chan}.")
 
     # notify student that the proposal was sent
     await update.message.reply_text(
@@ -394,8 +438,17 @@ async def send_diary_update(update: Update, context: ContextTypes):
     # create pending in database
     pending_sql.add_pending(student.id, classroom_id, token_type_id, text=text)
     logger.info(f"New diary update by {user.fullname}.")
-    #TODO send notification to notification channel of the classroom if it exists
-
+    # send notification to notification channel of the classroom if it exists
+    chan = classroom_sql.get_teacher_notification_channel_chat_id(classroom_id)
+    if chan:
+        try:
+            await context.bot.send_message(
+                chan,
+                f"El estudiante {user.fullname} ha actualizado su diario",
+            )
+        except BadRequest:
+            logger.exception(f"Failed to send message to notification channel {chan}.")
+            
     # notify student that the proposal was sent
     await update.message.reply_text(
         "Actualización de diario enviada.",

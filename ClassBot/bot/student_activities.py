@@ -279,7 +279,16 @@ async def activity_type_send_submission_done(update: Update, context: ContextTyp
     # Create pending in DB
     pending_sql.add_pending(student_id=student.id, classroom_id=classroom_id, token_type_id=token_type.id, guild_id=guild_id, text=text, FileID=fid)
     logger.info(f"New activity_type f{token_type.type} pending created by student {user_sql.get_user(student.id).fullname}")
-    #TODO: Send notification to notification channel of the classroom if it exists
+    # Send notification to notification channel of the classroom if it exists
+    chan = classroom_sql.get_teacher_notification_channel_chat_id(classroom_id)
+    if chan:
+        try:
+            await context.bot.send_message(
+                chat_id=chan,
+                text=f"El estudiante {user_sql.get_user(student.id).fullname} ha enviado una entrega para la actividad {token_type.type}:\n" + f"{'Gremio: ' + guild.name if guild else ''}\n",
+            )
+        except BadRequest:
+            logger.exception(f"Failed to send message to notification channel {chan}.")
 
     # notify student
     await update.message.reply_text(
@@ -363,7 +372,16 @@ async def activity_send_submission_done(update: Update, context: ContextTypes):
     # Create pending in DB
     pending_sql.add_pending(student_id=student.id, classroom_id=classroom_id, token_type_id=token_type.id, token_id=token.id, guild_id=guild_id, text=context.user_data['activity']['text'], FileID=context.user_data['activity']['FileID'])
     logger.info(f"New activity f{token.name} of f{token_type.type} pending created by student {user_sql.get_user(student.id).fullname}")
-    #TODO: Send notification to notification channel of the classroom if it exists
+    # Send notification to notification channel of the classroom if it exists
+    chan = classroom_sql.get_teacher_notification_channel_chat_id(classroom_id)
+    if chan:
+        try:
+            await context.bot.send_message(
+                chat_id=chan,
+                text=f"El estudiante {user_sql.get_user(student.id).fullname} ha enviado una entrega para la actividad {token.name} de {token_type.type}:\n" + f"{'Gremio: ' + guild.name if guild else ''}\n",
+            )
+        except BadRequest:
+            logger.exception(f"Failed to send message to notification channel {chan}.")
 
     # notify student
     if query:

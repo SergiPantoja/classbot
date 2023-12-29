@@ -103,7 +103,16 @@ async def student_new_title_proposal(update: Update, context: ContextTypes):
     logger.info(f"New title proposal by {user.fullname} for conference {conference.name}.")
 
     # send notification to notification channel of the classroom if it exists
-    #TODO
+    chan = classroom_sql.get_teacher_notification_channel_chat_id(classroom_id)
+    if chan:
+        try:
+            await context.bot.send_message(
+                chat_id=chan,
+                text=f"Propuesta de título para la conferencia {conference.name}:\n"
+                    f"{user.fullname}: Propone el título \"{update.message.text}\".",
+            )
+        except BadRequest:
+            logger.exception(f"Failed to send message to notification channel {chan}.")
 
     # notify student that the proposal was sent
     await update.message.reply_text(

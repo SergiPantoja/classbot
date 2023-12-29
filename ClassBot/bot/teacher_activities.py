@@ -878,7 +878,7 @@ async def review_activity_send_credits(update: Update, context: ContextTypes):
         text = f"Créditos otorgados manualmente por el profesor {user_sql.get_user(teacher_id).fullname} al estudiante {user_sql.get_user(student.id).fullname} por la actividad {token.name} de {token_type.type}"
         pending_sql.add_pending(student_id=student.id, classroom_id=classroom_id, token_type_id=token_type.id, token_id=token.id, status="APPROVED", approved_by=teacher_id, text=text)
         # notify student
-        text = f"El profesor <b>{user_sql.get_user(teacher_id).fullname}</b> te ha otorgado <b>{value}</b> créditos por la actividad <b>{token.name}</b> de <b>{token_type.type}</b>"
+        text = f"{user_sql.get_user(teacher_id).fullname}</b> te ha otorgado <b>{value}</b> créditos por la actividad <b>{token.name}</b> de <b>{token_type.type}</b>"
         if comment:
             text += f"\n<b>Comentario:</b> {comment}"
         try:
@@ -889,6 +889,18 @@ async def review_activity_send_credits(update: Update, context: ContextTypes):
             )
         except BadRequest:
             logger.error(f"Error sending message to student {user_sql.get_user(student.id).fullname} (chat_id: {user_sql.get_user(student.id).telegram_chatid})")
+        # Send to notif channel if exists
+        chan = classroom_sql.get_teacher_notification_channel_chat_id(classroom_id)
+        if chan:
+            try:
+                await context.bot.send_message(
+                    chat_id=chan,
+                    text=f"{user_sql.get_user(teacher_id).fullname}</b> ha otorgado <b>{value}</b> créditos a <b>{user_sql.get_user(student.id).fullname}</b> por la actividad <b>{token.name}</b> de <b>{token_type.type}</b>",
+                    parse_mode="HTML",
+                )
+            except BadRequest:
+                logger.exception(f"Failed to send message to notification channel {chan}.")
+        
         await update.message.reply_text(
             "Créditos otorgados!",
             reply_markup=ReplyKeyboardMarkup(keyboards.TEACHER_MAIN_MENU, one_time_keyboard=True, resize_keyboard=True),
@@ -918,6 +930,18 @@ async def review_activity_send_credits(update: Update, context: ContextTypes):
                 )
             except BadRequest:
                 logger.error(f"Error sending message to student {fullname} (chat_id: {chat_id})")
+        # Send to notif channel if exists
+        chan = classroom_sql.get_teacher_notification_channel_chat_id(classroom_id)
+        if chan:
+            try:
+                await context.bot.send_message(
+                    chat_id=chan,
+                    text=f"{user_sql.get_user(teacher_id).fullname}</b> ha otorgado <b>{value}</b> créditos a {guild.name} por la actividad <b>{token.name}</b> de <b>{token_type.type}</b>",
+                    parse_mode="HTML",
+                )
+            except BadRequest:
+                logger.exception(f"Failed to send message to notification channel {chan}.")
+        
         await update.message.reply_text(
             "Créditos otorgados!",
             reply_markup=ReplyKeyboardMarkup(keyboards.TEACHER_MAIN_MENU, one_time_keyboard=True, resize_keyboard=True),

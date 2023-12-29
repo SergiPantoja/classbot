@@ -319,6 +319,18 @@ async def assign_credits_to_guild_done(update: Update, context: ContextTypes):
         except BadRequest:
             logger.error(f"Error sending message to student {user_sql.get_user(student.id).fullname} (chat_id: {user_sql.get_user(student.id).telegram_chatid})")
     
+    # Send to notif channel if exists
+    chan = classroom_sql.get_teacher_notification_channel_chat_id(classroom_id)
+    if chan:
+        try:
+            await context.bot.send_message(
+                chat_id=chan,
+                text=text,
+                parse_mode="HTML",
+            )
+        except BadRequest:
+                logger.exception(f"Failed to send message to notification channel {chan}.")
+
     await update.message.reply_text(
         f"Créditos asignados a {guild.name}",
         reply_markup=ReplyKeyboardMarkup(keyboards.TEACHER_MAIN_MENU, one_time_keyboard=True, resize_keyboard=True),
@@ -440,6 +452,18 @@ async def assign_credits_to_student_done(update: Update, context: ContextTypes):
         )
     except BadRequest:
         logger.error(f"Error sending message to student {student_name}")
+
+    # Send to notif channel if exists
+    chan = classroom_sql.get_teacher_notification_channel_chat_id(classroom_id)
+    if chan:
+        try:
+            await context.bot.send_message(
+                chat_id=chan,
+                text=f"<b>{teacher_name}</b> le ha otorgado <b>{value}</b> créditos a <b>{student_name}</b>",
+                parse_mode="HTML",
+            )
+        except BadRequest:
+                logger.exception(f"Failed to send message to notification channel {chan}.")
 
     await update.message.reply_text(
         f"Créditos asignados a {user_sql.get_user(student.id).fullname}",

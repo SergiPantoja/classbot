@@ -505,7 +505,7 @@ async def manage_pending(update: Update, context: ContextTypes):
             logger.info(f"Pending {pending_id} approved")
 
             # notify student
-            text = f"El profesor {user_sql.get_user_by_chatid(update.effective_user.id).fullname} ha aprobado tu {pending_type}.\n\nTu {pending_type}:\n{pending.text}"
+            text = f"{user_sql.get_user_by_chatid(update.effective_user.id).fullname} ha aprobado tu {pending_type}.\n\nTu {pending_type}:\n{pending.text}"
             try:
                 await context.bot.send_message(
                     chat_id=user_sql.get_user(pending.student_id).telegram_chatid,
@@ -513,6 +513,17 @@ async def manage_pending(update: Update, context: ContextTypes):
                 )
             except BadRequest:
                 logger.error(f"Error sending message to student {user_sql.get_user(pending.student_id).fullname} (chat_id: {user_sql.get_user(pending.student_id).telegram_chatid})")
+
+            # Send to notif channel if exists
+            chan = classroom_sql.get_teacher_notification_channel_chat_id(teacher.active_classroom_id)
+            if chan:
+                try:
+                    await context.bot.send_message(
+                        chat_id=chan,
+                        text=f"{user_sql.get_user_by_chatid(update.effective_user.id).fullname} ha aprobado la {pending_type} de {user_sql.get_user(pending.student_id).fullname}.",
+                    )
+                except BadRequest:
+                    logger.exception(f"Failed to send message to notification channel {chan}.")
 
             await query.message.reply_text(
                 text="El pendiente ha sido aprobado.",
@@ -560,6 +571,18 @@ async def manage_pending(update: Update, context: ContextTypes):
                             )
                         except BadRequest:
                             logger.error(f"Error sending message to student {user_sql.get_user(pending.student_id).fullname} (chat_id: {user_sql.get_user(pending.student_id).telegram_chatid})")
+                        
+                        # Send to notif channel if exists
+                        chan = classroom_sql.get_teacher_notification_channel_chat_id(teacher.active_classroom_id)
+                        if chan:
+                            try:
+                                await context.bot.send_message(
+                                    chat_id=chan,
+                                    text=f"{user_sql.get_user_by_chatid(update.effective_user.id).fullname} ha aprobado el ejercicio {token.name} de {pending_type} con {value} créditos.",
+                                )
+                            except BadRequest:
+                                logger.exception(f"Failed to send message to notification channel {chan}.")
+                        
                         await query.message.reply_text(
                             text="El pendiente ha sido aprobado.",
                             reply_markup=ReplyKeyboardMarkup(keyboards.TEACHER_MAIN_MENU, one_time_keyboard=True, resize_keyboard=True),
@@ -791,6 +814,18 @@ async def approve_pending(update: Update, context: ContextTypes):
         except BadRequest:
             logger.error(f"Error sending message to student {student_name} (chat_id: {student_chat_id})")
 
+    # Send to notif channel if exists
+    chan = classroom_sql.get_teacher_notification_channel_chat_id(classroom_id)
+    if chan:
+        try:
+            await context.bot.send_message(
+                chat_id=chan,
+                text=f"<b>{teacher_name}</b> ha aprobado el <b>{token_type}</b> de <b>{student_name}</b>con un valor de <b>{value}</b>.",
+                parse_mode="HTML",
+            )
+        except BadRequest:
+            logger.exception(f"Failed to send message to notification channel {chan}.")
+
     await update.message.reply_text(
         text="El pendiente ha sido aprobado.",
         reply_markup=ReplyKeyboardMarkup(keyboards.TEACHER_MAIN_MENU, one_time_keyboard=True, resize_keyboard=True),
@@ -846,6 +881,19 @@ async def approve_partial_credits(update: Update, context: ContextTypes):
         )
     except BadRequest:
         logger.error(f"Error sending message to student {user_sql.get_user(pending.student_id).fullname} (chat_id: {user_sql.get_user(pending.student_id).telegram_chatid})")
+    
+    # Send to notif channel if exists
+    chan = classroom_sql.get_teacher_notification_channel_chat_id(teacher.active_classroom_id)
+    if chan:
+        try:
+            await context.bot.send_message(
+                chat_id=chan,
+                text=f"<b>{user_sql.get_user_by_chatid(update.effective_user.id).fullname}</b> ha aprobado el ejercicio <b>{token.name}</b> de <b>{pending_type}</b> de <b>{user_sql.get_user(pending.student_id).fullname}</b> con <b>{value}</b> créditos.",
+                parse_mode="HTML",
+            )
+        except BadRequest:
+            logger.exception(f"Failed to send message to notification channel {chan}.")
+    
     await update.message.reply_text(
         text="El pendiente ha sido aprobado.",
         reply_markup=ReplyKeyboardMarkup(keyboards.TEACHER_MAIN_MENU, one_time_keyboard=True, resize_keyboard=True),

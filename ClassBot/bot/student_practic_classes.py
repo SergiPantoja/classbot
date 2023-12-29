@@ -148,7 +148,16 @@ async def practic_class_new_title_proposal(update: Update, context: ContextTypes
     pending_sql.add_pending(student.id, student.active_classroom_id, token_type_id, text=text)
     logger.info(f"New title proposal for practic class {practic_class_id} by {user.fullname}")
     # send notification to notification channel of the classroom if it exists
-    #TODO
+    chan = classroom_sql.get_teacher_notification_channel_chat_id(student.active_classroom_id)
+    if chan:
+        try:
+            await context.bot.send_message(
+                chat_id=chan,
+                text=f"Propuesta de título para la clase práctica {token_type_sql.get_token_type(activity_type_sql.get_activity_type(practic_class.activity_type_id).token_type_id).type}:\n"
+                    f"{user.fullname}: Propone el título \"{update.message.text}\".",
+            )
+        except BadRequest:
+            logger.exception(f"Failed to send message to notification channel {chan}.")
 
     # notify student that the proposal was sent
     await update.message.reply_text(
@@ -264,7 +273,16 @@ async def practic_class_exercise_send_submission_done(update: Update, context: C
     # create pending in database
     pending_sql.add_pending(student.id, classroom_id, token_type_id=activity_type.token_type_id, token_id=token.id, text=context.user_data["practic_class"]["text"], FileID=context.user_data["practic_class"]["file_id"])
     logger.info(f"New submission for exercise {exercise_id} by {user_sql.get_user(student.id).fullname}")
-    #TODO: send notification to notification channel of the classroom if it exists
+    # send notification to notification channel of the classroom if it exists
+    chan = classroom_sql.get_teacher_notification_channel_chat_id(classroom_id)
+    if chan:
+        try:
+            await context.bot.send_message(
+                chat_id=chan,
+                text=f"{user_sql.get_user(student.id).fullname} ha enviado una entrega para el ejercicio {token.name} de la clase práctica {token_type.type}.",
+            )
+        except BadRequest:
+            logger.exception(f"Failed to send message to notification channel {chan}.")
 
     # notify student that the submission was sent
     if query:
