@@ -164,7 +164,7 @@ async def pending_history(update: Update, context: ContextTypes):
     # get the list of pendings of this classroom that are "APPROVED" by this teacher
     pendings = pending_sql.get_approved_pendings_of_teacher(teacher.id, classroom_id)
     if pendings:
-        lines = [f"{i}. {token_sql.get_token(pending.token_id).name + ' de' if pending.token_id else ''} {token_type_sql.get_token_type(pending.token_type_id).type} - {user_sql.get_user(pending.student_id).fullname} Aprobado el {datetime.date(pending.approved_date.year, pending.approved_date.month, pending.approved_date.day)} con un valor de {student_token_sql.get_value(pending.student_id, pending.token_id)} -> /pending_{pending.id}" for i, pending in enumerate(pendings, start=1)]
+        lines = [f"{i}. {token_sql.get_token(pending.token_id).name}{' de ' + token_type_sql.get_token_type(pending.token_type_id).type if (activity_sql.get_activity_by_token_id(pending.token_id)) else ''} - {user_sql.get_user(pending.student_id).fullname} Aprobado el {datetime.date(pending.approved_date.year, pending.approved_date.month, pending.approved_date.day)} con un valor de {student_token_sql.get_value(pending.student_id, pending.token_id)} -> /pending_{pending.id}" for i, pending in enumerate(pendings, start=1)]
         # create new paginator using this lines
         other_buttons = [InlineKeyboardButton("🗃 Todos los pendientes", callback_data="all_pendings")]
         paginator = Paginator(lines, items_per_page=10, text_before="Historial de pendientes que has aprobado:", add_back=True, other_buttons=other_buttons)
@@ -525,8 +525,8 @@ async def manage_pending(update: Update, context: ContextTypes):
             activity = activity_sql.get_activity_by_token_id(pending.token_id)
             if activity:
                 exercise = practic_class_exercises_sql.get_practic_class_exercise_by_activity_id(activity.id)
-                practic_class = practic_class_sql.get_practic_class(exercise.practic_class_id)
                 if exercise:    # it is a practic class exercise
+                    practic_class = practic_class_sql.get_practic_class(exercise.practic_class_id)
                     if exercise.partial_credits_allowed:
                         # ask for value of partial credits
                         if query.message.caption:
@@ -766,7 +766,7 @@ async def approve_pending(update: Update, context: ContextTypes):
 
     # notify student or guild
     if guild:
-        text = f"El profesor <b>{teacher_name}</b> ha aprobado el <b>{token_type}</b> del gremio <b>{guild.name}</b> con un valor de <b>{value}</b>.\n\nTu {token_type}:\n{pending.text}"
+        text = f"<b>{teacher_name}</b> ha aprobado el <b>{token_type}</b> del gremio <b>{guild.name}</b> con un valor de <b>{value}</b>.\n\nTu {token_type}:\n{pending.text}"
         if comment:
             text += f"\n\n<b>Comentario:</b>\n{comment}"
         for student in student_sql.get_students_by_guild(guild.id):
@@ -779,7 +779,7 @@ async def approve_pending(update: Update, context: ContextTypes):
             except BadRequest:
                 logger.error(f"Error sending message to student {user_sql.get_user(student.id).fullname} (chat_id: {user_sql.get_user(student.id).telegram_chatid})")
     else:
-        text = f"El profesor <b>{teacher_name}</b> ha aprobado tu <b>{token_type}</b> con un valor de <b>{value}</b>.\n\nTu {token_type}:\n{pending.text}"
+        text = f"<b>{teacher_name}</b> ha aprobado tu <b>{token_type}</b> con un valor de <b>{value}</b>.\n\nTu {token_type}:\n{pending.text}"
         if comment:
             text += f"\n\n<b>Comentario:</b>\n{comment}"
         try:

@@ -943,14 +943,15 @@ async def review_exercise_date(update: Update, context: ContextTypes):
     logger.info(f"Added {value} credits to student {student.id} for exercise {token.name}")
     # Create approved pending
     token_type = token_type_sql.get_token_type(activity_type_sql.get_activity_type(practic_class_sql.get_practic_class(exercise.practic_class_id).activity_type_id).token_type_id)
-    text = f"Créditos otorgados manualmente por el profesor {user_sql.get_user_by_chatid(update.effective_user.id).fullname} al estudiantes {user_sql.get_user(student.id).fullname} por el ejercicio {token.name} de la clase práctica {token_type.type}"
+    text = f"Créditos otorgados manualmente por el profesor {user_sql.get_user_by_chatid(update.effective_user.id).fullname} al estudiante {user_sql.get_user(student.id).fullname} por el ejercicio {token.name} de la clase práctica {token_type.type}"
     pending_sql.add_pending(student_id=student.id, classroom_id=teacher.active_classroom_id, token_type_id=token_type.id, token_id=token.id, status="APPROVED", approved_by=teacher.id, text=text)
     # notify student
-    text = f"El profesor {user_sql.get_user_by_chatid(update.effective_user.id).fullname} le ha otorgado {value} créditos por el ejercicio {token.name} de la clase práctica {token_type.type}"
+    text = f"<b>{user_sql.get_user_by_chatid(update.effective_user.id).fullname}</b> le ha otorgado <b>{value}</b> créditos por el ejercicio <b>{token.name}</b> de la clase práctica <b>{token_type.type}</b>"
     try:
         await context.bot.send_message(
             chat_id=user_sql.get_user(student.id).telegram_chatid,
             text=text,
+            parse_mode="HTML",
         )
     except BadRequest:
         logger.error(f"Error sending message to student {user_sql.get_user(student.id).fullname} (chat_id: {user_sql.get_user(student.id).telegram_chatid})")

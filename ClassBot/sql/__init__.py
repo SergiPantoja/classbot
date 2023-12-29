@@ -42,6 +42,8 @@ def create_default_token_types(session):
             s.add(Token_type(type="Chiste", hidden=True))
         if not s.query(Token_type).filter(Token_type.type == "Actualización de diario").first():
             s.add(Token_type(type="Actualización de diario", hidden=True))
+        if not s.query(Token_type).filter(Token_type.type == "Créditos otorgados directamente").first():
+            s.add(Token_type(type="Créditos otorgados directamente", hidden=True))
         s.commit()
         
 

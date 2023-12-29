@@ -277,17 +277,19 @@ async def student_info(update: Update, context: ContextTypes):
             if activity_type.single_submission:
                 lines.append(f"{i}. {student_token.creation_date.strftime('%d/%m/%Y')} - {str(student_token.value).ljust(10)} ➡️ <b>{token.name}</b> de <i>{token_type.type}</i>")
             else:
-                lines.append(f"{student_token.creation_date.strftime('%d/%m/%Y')} - {str(student_token.value).ljust(10)} ➡️ <b>{token.name}</b>")
+                lines.append(f"{i}. {student_token.creation_date.strftime('%d/%m/%Y')} - {str(student_token.value).ljust(10)} ➡️ <b>{token.name}</b>")
         else:
             lines.append(f"{i}. {student_token.creation_date.strftime('%d/%m/%Y')} - {str(student_token.value).ljust(10)} ➡️ <b>{token.name}</b>")
         i += 1
     # create new paginator using this lines
+    other_buttons = [InlineKeyboardButton("➕ Asignar créditos", callback_data=f"assign_credits_{student.id}")]
     paginator = Paginator(
         lines=lines, 
         items_per_page=10, 
         text_before=f"Historial de créditos de <b>{user_sql.get_user(student.id).fullname}:</b>", 
         text_after="",
         add_back=True,
+        other_buttons=other_buttons,
         )
     # save paginator in context
     context.user_data["paginator"] = paginator
@@ -298,6 +300,78 @@ async def student_info(update: Update, context: ContextTypes):
         parse_mode="HTML",
     )
     return states.T_CLASSROOM_STUDENT_INFO
+
+async def assign_credits_to_student(update: Update, context: ContextTypes):
+    """ Asks the teacher how many credits to assign to the student and an 
+    optional comment. """
+    query = update.callback_query
+    await query.answer()
+
+    student_id = int(update.callback_query.data.split("_")[2])
+    # save in context
+    if "classroom" not in context.user_data:
+        context.user_data["classroom"] = {}
+    context.user_data["classroom"]["student_id"] = student_id
+    student = student_sql.get_student(student_id)
+
+    await update.callback_query.edit_message_text(
+        f"¿Cuántos créditos deseas asignar a {user_sql.get_user(student.id).fullname}?",
+        reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔙", callback_data="back")]]),
+    )
+    return states.T_CLASSROOM_ASSIGN_CREDITS_STUDENT
+
+async def assign_credits_to_student_done(update: Update, context: ContextTypes):
+    """ Assigns the credits to the student """
+
+    # get student from db
+    student_id = context.user_data["classroom"]["student_id"]
+    student = student_sql.get_student(student_id)
+    student_name = user_sql.get_user(student.id).fullname
+    # get active classroom from db
+    teacher = teacher_sql.get_teacher(user_sql.get_user_by_chatid(update.effective_user.id).id)
+    teacher_name = user_sql.get_user(teacher.id).fullname
+    classroom = classroom_sql.get_classroom(teacher.active_classroom_id)
+    classroom_id = classroom.id
+
+    text = update.message.text
+    # get token value and comment
+    try:
+        value = int(text.split(" ")[0])
+        comment = text.split(" ", 1)[1]
+    except:
+        value = int(text)
+        comment = None
+    
+    token_type = token_type_sql.get_token_type_by_type("Créditos otorgados directamente")
+    # Create new token
+    token_sql.add_token(name=f"{token_type.type} a {student_name} por {teacher_name}", token_type_id=token_type.id, classroom_id=classroom_id, description=comment)
+    token_id = token_sql.get_last_token().id
+    # assign token to student
+    student_token_sql.add_student_token(student_id=student.id, token_id=token_id, value=value, teacher_id=teacher.id)
+    logger.info(f"Teacher {teacher.id} assigned {value} credits to student {student.id} in classroom {classroom.id}")
+    # Create approved pending
+    text = f"Créditos otorgados directamente a {student_name} por {teacher_name}"
+    pending_sql.add_pending(student_id=student.id, classroom_id=classroom_id, token_type_id=token_type.id, token_id=token_id, status="APPROVED", approved_by=teacher.id, text=text)
+
+    # Notify student
+    text = f"<b>{teacher_name}</b> te ha otorgado <b>{value}</b> créditos"
+    if comment:
+        text += f"\n\n<b>Comentario:</b>\n{comment}"
+    
+    try:
+        await context.bot.send_message(
+            chat_id=user_sql.get_user(student.id).telegram_chatid,
+            text=text,
+            parse_mode="HTML",
+        )
+    except BadRequest:
+        logger.error(f"Error sending message to student {student_name}")
+
+    await update.message.reply_text(
+        f"Créditos asignados a {user_sql.get_user(student.id).fullname}",
+        reply_markup=ReplyKeyboardMarkup(keyboards.TEACHER_MAIN_MENU, one_time_keyboard=True, resize_keyboard=True),
+    )
+    return ConversationHandler.END
 
 async def teacher_classroom_back(update: Update, context: ContextTypes):
     """ Go back to teacher main menu """
@@ -344,7 +418,9 @@ teacher_classroom_conv = ConversationHandler(
         states.T_CLASSROOM_STUDENT_INFO:[
             MessageHandler(filters.TEXT & filters.Regex(r"^/student_\d+$"), student_info),
             text_paginator_handler,
+            CallbackQueryHandler(assign_credits_to_student, pattern=r"^assign_credits_\d+$"),
         ],
+        states.T_CLASSROOM_ASSIGN_CREDITS_STUDENT:[MessageHandler(filters.Regex(r"^\d+(\s.*)?") & ~filters.COMMAND, assign_credits_to_student_done)],
     },
     fallbacks=[
         CallbackQueryHandler(teacher_classroom_back, pattern="back"),
