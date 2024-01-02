@@ -1,6 +1,7 @@
 import traceback
 import html
 import json
+from configparser import ConfigParser
 
 from telegram import Update
 from telegram.constants import ParseMode
@@ -26,9 +27,10 @@ from bot.student_activities import student_activities_conv
 from bot.student_practic_classes import student_practic_classes_conv
 
 
-# configs (move to file later)
-TOKEN = "5827425180:AAE6HGte6-L50z8IWysZ1jVng02zc1qxDaw"    #TEMPORARY TOKEN
-DEV_CHAT = "-1002102603758"
+config = ConfigParser()
+config.read("config.ini")
+TOKEN = config.get("bot", "TOKEN")
+DEV_CHAT = config.get("bot", "DEV_CHAT")
 
 async def error_handler(update: Update, context: ContextTypes):
     """Log Errors caused by Updates."""
