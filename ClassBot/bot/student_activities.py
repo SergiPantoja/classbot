@@ -356,7 +356,9 @@ async def activity_send_submission_done(update: Update, context: ContextTypes):
 
     # check if a pending with this token already exists
     pending = pending_sql.get_pending_of_student_by_token(student.id, classroom_id, token.id)
-    if pending:
+    # or if a pending related to a guild
+    pending_guild = pending_sql.get_pendings_by_guild(guild_id, classroom_id, token.id) if guild_id else None
+    if pending or pending_guild:
         # notify the student a submission already exists and ask if he wants to update it
         # (will delete the old pending and return to this state)
         if query: # delete pending

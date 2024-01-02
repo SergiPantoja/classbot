@@ -67,8 +67,7 @@ async def teacher_activities(update: Update, context: ContextTypes):
     else:
         await update.message.reply_text(
             "No hay actividades en el aula. Desear crear una?",
-            reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("➕ Crear actividad", callback_data="create_activity_type")], InlineKeyboardButton("🔙", callback_data="back")]),
+            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("➕ Crear actividad", callback_data="create_activity_type")], [InlineKeyboardButton("🔙", callback_data="back")]])
         )
         return states.T_ACTIVITIES_CREATE_TYPE
 
@@ -195,7 +194,7 @@ async def activity_type_file(update: Update, context: ContextTypes):
     activity_types = activity_type_sql.get_activity_types(classroom_id)
     buttons = [InlineKeyboardButton(f"{i}. {token_type_sql.get_token_type(activity_type.token_type_id).type}", callback_data=f"activity_type#{activity_type.id}") for i, activity_type in enumerate(activity_types, start=1)]
     other_buttons = [
-        InlineKeyboardButton("Crear actividad", callback_data="create_activity_type"),
+        InlineKeyboardButton("➕ Crear actividad", callback_data="create_activity_type"),
     ]
 
     if query:
@@ -528,7 +527,7 @@ async def activity_deadline(update: Update, context: ContextTypes):
     # Add buttons for back and create activity type
     buttons = [InlineKeyboardButton(f"{i}. {token_sql.get_token(activity.token_id).name}", callback_data=f"activity#{activity.id}") for i, activity in enumerate(activities, start=1)]
     other_buttons = [
-        InlineKeyboardButton(f"Crear actividad", callback_data=f"create_activity#{activity_type_id}"),
+        InlineKeyboardButton(f"➕ Crear actividad", callback_data=f"create_activity#{activity_type_id}"),
         InlineKeyboardButton("Cambiar descripción" , callback_data="activity_type_change_description"),
         InlineKeyboardButton("Enviar otro archivo", callback_data="activity_type_change_file"),
         InlineKeyboardButton("Ocultar actividad", callback_data="activity_type_hide"),

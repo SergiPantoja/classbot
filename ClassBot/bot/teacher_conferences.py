@@ -45,7 +45,7 @@ async def teacher_conferences(update: Update, context: ContextTypes):
         # Show all conferences with pagination, selecting a conference will allow
         # the user to edit or delete it, also create a new conference button.
         buttons = [InlineKeyboardButton(f"{i}. {conference.name} - {datetime.date(conference.date.year, conference.date.month, conference.date.day)}", callback_data=f"conference#{conference.id}") for i, conference in enumerate(conferences, start=1)]
-        other_buttons = [InlineKeyboardButton("Crear conferencia", callback_data="conference_create")]
+        other_buttons = [InlineKeyboardButton("➕ Crear conferencia", callback_data="conference_create")]
         await update.message.reply_text(
             "Conferencias del aula",
             reply_markup=paginated_keyboard(buttons, context=context, add_back=True, other_buttons=other_buttons),
