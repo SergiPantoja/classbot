@@ -47,8 +47,7 @@ def paginated_keyboard(buttons: list[InlineKeyboardButton], page: int = 1, conte
 async def paginator(update: Update, context: ContextTypes) -> None:
     """ Handles pagination. 
     Does not return new state, it will keep a ongoing conversation in the same
-    state. This also means it cannot be used as an entry point since it will
-    end the conversation."""
+    state. """
     query = update.callback_query
     await query.answer()
 

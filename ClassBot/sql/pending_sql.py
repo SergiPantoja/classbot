@@ -46,7 +46,7 @@ def update_token(pending_id: int, token_id: int) -> None:
 
 def get_pendings_by_classroom(classroom_id: int, status: str = None, direct_pending: int = None) -> list[Pending]:
     """ Returns a list of pendings belonging to the given classroom. 
-    sort by creation_date from newest to oldest. If approved, sort by approved_date from newest to oldest.
+    sort by creation_date from oldest to newest. If approved, sort by approved_date from newest to oldest.
     If status is given, only returns pendings with that status. 
     status can be "PENDING", "APPROVED" or "REJECTED".
     direct_pendings is the teacher_id, if given, only returns pendings with that teacher_id. 
@@ -56,9 +56,9 @@ def get_pendings_by_classroom(classroom_id: int, status: str = None, direct_pend
             if status == "APPROVED":
                 return s.query(Pending).filter(Pending.classroom_id == classroom_id, Pending.status == status, Pending.teacher_id == direct_pending).order_by(Pending.approved_date.desc()).all()
             else:
-                return s.query(Pending).filter(Pending.classroom_id == classroom_id, Pending.status == status, Pending.teacher_id == direct_pending).order_by(Pending.creation_date.desc()).all()
+                return s.query(Pending).filter(Pending.classroom_id == classroom_id, Pending.status == status, Pending.teacher_id == direct_pending).order_by(Pending.creation_date).all()
         else:
-            return s.query(Pending).filter(Pending.classroom_id == classroom_id, Pending.teacher_id == direct_pending).order_by(Pending.creation_date.desc()).all()
+            return s.query(Pending).filter(Pending.classroom_id == classroom_id, Pending.teacher_id == direct_pending).order_by(Pending.creation_date).all()
     
 def get_pendings_by_student(student_id: int, classroom_id: int, status: str = None, direct_pending: int = None) -> list[Pending]:
     """ Returns a list of pendings belonging to the given student. 
@@ -78,7 +78,7 @@ def get_pendings_by_student(student_id: int, classroom_id: int, status: str = No
 
 def get_pendings_by_token_type(token_type_id: int, classroom_id: int, status: str = None, direct_pending: int = None) -> list[Pending]:
     """ Returns a list of pendings belonging to the given token_type. 
-    sort by creation_date from newest to oldest. If approved, sort by approved_date from newest to oldest.
+    sort by creation_date from oldest to newest. If approved, sort by approved_date from newest to oldest.
     If status is given, only returns pendings with that status. 
     status can be "PENDING", "APPROVED" or "REJECTED".
     direct_pendings is the teacher_id, if given, only returns pendings with that teacher_id. 
@@ -88,13 +88,13 @@ def get_pendings_by_token_type(token_type_id: int, classroom_id: int, status: st
             if status == "APPROVED":
                 return s.query(Pending).filter(Pending.classroom_id == classroom_id, Pending.token_type_id == token_type_id, Pending.status == status, Pending.teacher_id == direct_pending).order_by(Pending.approved_date.desc()).all()
             else:
-                return s.query(Pending).filter(Pending.classroom_id == classroom_id, Pending.token_type_id == token_type_id, Pending.status == status, Pending.teacher_id == direct_pending).order_by(Pending.creation_date.desc()).all()
+                return s.query(Pending).filter(Pending.classroom_id == classroom_id, Pending.token_type_id == token_type_id, Pending.status == status, Pending.teacher_id == direct_pending).order_by(Pending.creation_date).all()
         else:
-            return s.query(Pending).filter(Pending.classroom_id == classroom_id, Pending.token_type_id == token_type_id, Pending.teacher_id == direct_pending).order_by(Pending.creation_date.desc()).all()
+            return s.query(Pending).filter(Pending.classroom_id == classroom_id, Pending.token_type_id == token_type_id, Pending.teacher_id == direct_pending).order_by(Pending.creation_date).all()
 
 def get_direct_pendings_of_teacher(teacher_id: int, classroom_id: int, status: str = None) -> list[Pending]:
     """ Returns a list of direct pendings belonging to the given teacher. 
-    sort by creation_date from newest to oldest. If approved, sort by approved_date from newest to oldest.
+    sort by creation_date from oldest to newest. If approved, sort by approved_date from newest to oldest.
     If status is given, only returns pendings with that status. 
     status can be "PENDING", "APPROVED" or "REJECTED" """
     with session() as s:
@@ -102,9 +102,9 @@ def get_direct_pendings_of_teacher(teacher_id: int, classroom_id: int, status: s
             if status == "APPROVED":
                 return s.query(Pending).filter(Pending.classroom_id == classroom_id, Pending.teacher_id == teacher_id, Pending.status == status).order_by(Pending.approved_date.desc()).all()
             else:
-                return s.query(Pending).filter(Pending.classroom_id == classroom_id, Pending.teacher_id == teacher_id, Pending.status == status).order_by(Pending.creation_date.desc()).all()
+                return s.query(Pending).filter(Pending.classroom_id == classroom_id, Pending.teacher_id == teacher_id, Pending.status == status).order_by(Pending.creation_date).all()
         else:
-            return s.query(Pending).filter(Pending.classroom_id == classroom_id, Pending.teacher_id == teacher_id).order_by(Pending.creation_date.desc()).all()
+            return s.query(Pending).filter(Pending.classroom_id == classroom_id, Pending.teacher_id == teacher_id).order_by(Pending.creation_date).all()
 
 def get_approved_pendings_of_teacher(teacher_id: int, classroom_id: int) -> list[Pending]:
     """ Returns a list of approved pendings approved by the given teacher.
